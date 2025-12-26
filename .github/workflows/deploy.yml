@@ -71,13 +71,20 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
           NEXTAUTH_URL: ${{ secrets.NEXTAUTH_URL }}
+          KIMI_API_KEY: ${{ secrets.KIMI_API_KEY }}
+          KIMI_BASE_URL: ${{ secrets.KIMI_BASE_URL }}
+          KIMI_MODEL: ${{ secrets.KIMI_MODEL }}
+          OLLAMA_BASE_URL: ${{ secrets.OLLAMA_BASE_URL }}
+          OLLAMA_EMBEDDING_MODEL: ${{ secrets.OLLAMA_EMBEDDING_MODEL }}
+          CHROMADB_HOST: ${{ secrets.CHROMADB_HOST }}
+          CHROMADB_PORT: ${{ secrets.CHROMADB_PORT }}
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           port: ${{ secrets.SERVER_PORT || 22 }}
           command_timeout: 20m
-          envs: DATABASE_URL,NEXTAUTH_SECRET,NEXTAUTH_URL
+          envs: DATABASE_URL,NEXTAUTH_SECRET,NEXTAUTH_URL,KIMI_API_KEY,KIMI_BASE_URL,KIMI_MODEL,OLLAMA_BASE_URL,OLLAMA_EMBEDDING_MODEL,CHROMADB_HOST,CHROMADB_PORT
           script: |
             cd /www/wwwroot/my-next-app
 
@@ -88,6 +95,21 @@ jobs:
             NEXTAUTH_URL="${NEXTAUTH_URL}"
             NODE_ENV="production"
             EOF
+
+            # 添加 AI 配置（如果提供了 AI 相关的 Secrets）
+            if [ -n "${KIMI_API_KEY}" ]; then
+              echo "KIMI_API_KEY=\"${KIMI_API_KEY}\"" >> .env.production
+              echo "KIMI_BASE_URL=\"${KIMI_BASE_URL:-https://api.moonshot.cn/v1}\"" >> .env.production
+              echo "KIMI_MODEL=\"${KIMI_MODEL:-moonshot-v1-32k}\"" >> .env.production
+              echo "OLLAMA_BASE_URL=\"${OLLAMA_BASE_URL:-http://localhost:11434}\"" >> .env.production
+              echo "OLLAMA_EMBEDDING_MODEL=\"${OLLAMA_EMBEDDING_MODEL:-nomic-embed-text}\"" >> .env.production
+              echo "CHROMADB_HOST=\"${CHROMADB_HOST:-localhost}\"" >> .env.production
+              echo "CHROMADB_PORT=\"${CHROMADB_PORT:-8000}\"" >> .env.production
+              echo "✅ AI 配置已添加"
+            else
+              echo "⚠️  未配置 AI 相关环境变量（AI 功能将不可用）"
+            fi
+
             chmod 600 .env.production
             echo "环境变量文件已更新"
 

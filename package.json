@@ -80,6 +80,7 @@
     "react-dom": "^18",
     "react-hook-form": "^7.62.0",
     "react-markdown": "^10.1.0",
+    "react-snowfall": "^2.4.0",
     "rehype-highlight": "^7.0.2",
     "rehype-raw": "^7.0.0",
     "remark": "^15.0.1",

@@ -199,9 +199,7 @@ export async function deletePostIndex(postId: string): Promise<void> {
 /**
  * 批量索引所有已发布文章
  */
-export async function indexAllPosts(
-  options: IndexOptions = {}
-): Promise<{
+export async function indexAllPosts(options: IndexOptions = {}): Promise<{
   indexed: number;
   skipped: number;
   failed: number;
