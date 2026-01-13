@@ -22,6 +22,7 @@ interface ImageData {
   size: number;
   mimeType: string;
   type: "COVER" | "CONTENT";
+  isVirtual?: boolean; // 标记是否为虚拟记录（从文章内容或封面图衍生）
 }
 
 interface PostImages {

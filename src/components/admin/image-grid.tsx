@@ -22,6 +22,7 @@ interface ImageData {
   size: number;
   mimeType: string;
   type: "COVER" | "CONTENT";
+  isVirtual?: boolean; // 标记是否为虚拟记录（从文章内容或封面图衍生）
 }
 
 interface ImageGridProps {
@@ -217,7 +218,7 @@ export default function ImageGrid({
                   </Button>
                 </div>
                 <div className="flex gap-2">
-                  {image.type !== "COVER" && (
+                  {image.type !== "COVER" && !image.isVirtual && (
                     <Button
                       size="sm"
                       variant="outline"
@@ -228,27 +229,46 @@ export default function ImageGrid({
                       <Edit2 className="h-3 w-3" />
                     </Button>
                   )}
-                  <Button
-                    size="sm"
-                    variant="destructive"
-                    onClick={() => handleDeleteClick(image)}
-                    title="删除"
-                    className="text-xs"
-                  >
-                    <Trash2 className="h-3 w-3" />
-                  </Button>
+                  {!image.isVirtual ? (
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      onClick={() => handleDeleteClick(image)}
+                      title="删除"
+                      className="text-xs"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  ) : (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled
+                      title="虚拟图片无法删除（请在文章编辑器中删除）"
+                      className="text-xs opacity-50 cursor-not-allowed"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  )}
                 </div>
               </div>
             </div>
 
             {/* 图片信息 */}
             <div className="p-3">
-              <p
-                className="text-sm font-medium truncate"
-                title={image.filename}
-              >
-                {image.filename}
-              </p>
+              <div className="flex items-center justify-between mb-1">
+                <p
+                  className="text-sm font-medium truncate"
+                  title={image.filename}
+                >
+                  {image.filename}
+                </p>
+                {image.isVirtual && (
+                  <span className="text-[10px] px-1.5 py-0.5 bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-300 rounded">
+                    虚拟
+                  </span>
+                )}
+              </div>
               <p className="text-xs text-muted-foreground">
                 {formatFileSize(image.size)}
               </p>
