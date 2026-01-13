@@ -15,8 +15,11 @@ import {
   ExternalLink,
 } from "lucide-react";
 import Link from "next/link";
-import Image from "next/image";
 import { SimpleLoading } from "@/components/ui/loading";
+import {
+  OptimizedAvatar,
+  OptimizedContentImage,
+} from "@/components/optimized/optimized-image";
 
 interface Profile {
   id: string;
@@ -197,14 +200,15 @@ export default function AboutContent() {
         className="mb-24"
       >
         <div className="flex flex-col md:flex-row gap-12 items-center md:items-start text-center md:text-left">
-          {/* 头像 - 与首页侧边栏一致的 6px 粗边框 */}
+          {/* 头像 - 使用优化的图片组件 */}
           <div className="flex-shrink-0">
             <div className="w-40 h-40 rounded-full border-[6px] border-black dark:border-white overflow-hidden shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] dark:shadow-[8px_8px_0px_0px_rgba(255,255,255,1)]">
               {avatar ? (
-                <img
+                <OptimizedAvatar
                   src={avatar}
                   alt={displayName || profile.username}
-                  className="w-full h-full object-cover"
+                  className="w-full h-full"
+                  priority={true}
                 />
               ) : (
                 <div className="w-full h-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
@@ -319,10 +323,9 @@ export default function AboutContent() {
                 {/* 图片区域 */}
                 <div className="relative aspect-square overflow-hidden saturate-[1.2] contrast-[1.1] brightness-[1.05] transition-all duration-500 border-b-4 border-black dark:border-white">
                   {hobby.image ? (
-                    <Image
+                    <OptimizedContentImage
                       src={hobby.image}
                       alt={hobby.name}
-                      fill
                       className="object-cover transition-transform duration-700 group-hover:scale-110 group-hover:saturate-[1.5]"
                     />
                   ) : (
@@ -378,10 +381,9 @@ export default function AboutContent() {
                 </div>
                 {work.image && (
                   <div className="relative aspect-video md:aspect-square w-full border-4 border-black dark:border-white overflow-hidden shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:shadow-[4px_4px_0px_0px_rgba(255,255,255,1)]">
-                    <Image
+                    <OptimizedContentImage
                       src={work.image}
                       alt={work.company}
-                      fill
                       className="object-cover saturate-[1.2] contrast-[1.1] transition-transform duration-500 hover:scale-110"
                     />
                   </div>

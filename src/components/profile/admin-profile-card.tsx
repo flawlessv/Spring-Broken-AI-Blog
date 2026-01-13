@@ -9,6 +9,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { OptimizedAvatar } from "@/components/optimized/optimized-image";
 
 interface AdminProfile {
   id: string;
@@ -53,13 +54,14 @@ export default function AdminProfileCard({
         {/* 顶部个人信息区域 */}
         <div className="flex items-start justify-between w-full relative pr-12">
           <div className="flex-1 space-y-4">
-            {/* 头像 - 再次增大，保持 6px 边框 */}
+            {/* 头像 - 使用优化的图片组件 */}
             <div className="w-28 h-28 rounded-full border-[6px] border-black dark:border-white overflow-hidden bg-white flex-shrink-0 shadow-md">
               {avatar ? (
-                <img
+                <OptimizedAvatar
                   src={avatar}
-                  alt={displayName}
-                  className="w-full h-full object-cover"
+                  alt={displayName || profile.username}
+                  className="w-full h-full"
+                  priority={true}
                 />
               ) : (
                 <div className="w-full h-full flex items-center justify-center">

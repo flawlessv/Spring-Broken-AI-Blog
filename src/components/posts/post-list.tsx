@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { format } from "date-fns";
-import { BackgroundImage } from "@/components/optimized/image-with-fallback";
+import { OptimizedCover } from "@/components/optimized/optimized-image";
 
 interface Post {
   id: string;
@@ -77,11 +77,12 @@ export default function PostList({
         <article key={post.id} className="w-full">
           <Link href={`/posts/${post.slug}`} className="group block w-full">
             <div className="relative w-full h-[220px] sm:h-[280px] overflow-hidden bg-gray-100">
-              {/* 背景图片 - 占满全屏，无圆角 */}
+              {/* 背景图片 - 使用优化的图片组件 */}
               <div className="absolute inset-0 transition-transform duration-700 group-hover:scale-105">
-                <BackgroundImage
+                <OptimizedCover
                   src={post.coverImage || ""}
-                  className="w-full h-full object-cover"
+                  alt={post.title}
+                  className="w-full h-full"
                   priority={index < 2}
                 />
                 {/* 叠加层：深色渐变保证文字可读性 */}

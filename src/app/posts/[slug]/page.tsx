@@ -12,6 +12,7 @@ import { ImmersiveReaderToggle } from "@/components/immersive-reader";
 import RelatedPosts from "@/components/posts/related-posts";
 import { SeasonalBackground } from "@/components/home/seasonal-background";
 import { FlowerClick } from "@/components/home/flower-click";
+import { OptimizedAvatar } from "@/components/optimized/optimized-image";
 
 interface Post {
   id: string;
@@ -166,15 +167,13 @@ export default async function PostPage({
               <div className="flex items-center gap-3">
                 {post.author.profile?.avatar ? (
                   <div className="w-10 h-10 rounded-full border-2 border-black dark:border-white overflow-hidden bg-white">
-                    <Image
+                    <OptimizedAvatar
                       src={post.author.profile.avatar}
                       alt={
                         post.author.profile?.displayName || post.author.username
                       }
-                      width={40}
-                      height={40}
-                      className="w-full h-full object-cover"
-                      unoptimized
+                      className="w-full h-full"
+                      priority={true}
                     />
                   </div>
                 ) : (
