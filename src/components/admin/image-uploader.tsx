@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, DragEvent, ChangeEvent } from "react";
-import { Upload, X, Image as ImageIcon, Loader2 } from "lucide-react";
+import { Upload, X, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
@@ -9,7 +9,7 @@ import Image from "next/image";
 
 interface ImageUploaderProps {
   postId: string;
-  type: "cover" | "content";
+  type: "content"; // 仅支持内容配图上传，封面图使用远程URL
   onUploadComplete?: () => void;
   maxFiles?: number;
 }
@@ -26,7 +26,7 @@ export default function ImageUploader({
   postId,
   type,
   onUploadComplete,
-  maxFiles = type === "cover" ? 1 : 10,
+  maxFiles = 10, // 默认最多10张内容配图
 }: ImageUploaderProps) {
   const { toast } = useToast();
   const [isDragging, setIsDragging] = useState(false);
@@ -81,8 +81,8 @@ export default function ImageUploader({
         return false;
       }
 
-      // 检查文件大小
-      const maxSize = type === "cover" ? 2 : 5;
+      // 检查文件大小（内容配图最大 5MB）
+      const maxSize = 5;
       if (file.size > maxSize * 1024 * 1024) {
         toast({
           title: "文件过大",
@@ -214,9 +214,7 @@ export default function ImageUploader({
         <Upload className="h-10 w-10 mx-auto mb-4 text-muted-foreground" />
         <p className="text-sm font-medium mb-1">点击上传或拖拽图片到这里</p>
         <p className="text-xs text-muted-foreground">
-          {type === "cover"
-            ? "支持 JPG、PNG、WebP、GIF，最大 2MB"
-            : `支持 JPG、PNG、WebP、GIF，最大 5MB${maxFiles > 1 ? `，最多 ${maxFiles} 张` : ""}`}
+          支持 JPG、PNG、WebP、GIF，最大 5MB{maxFiles > 1 ? `，最多 ${maxFiles} 张` : ""}
         </p>
       </div>
 

@@ -30,7 +30,7 @@ export function CoverImageField({ control }: CoverImageFieldProps) {
               <Input placeholder="图片 URL (可选)" {...field} />
             </FormControl>
             <FormDescription className="text-xs">
-              输入封面图片的 URL 地址，用于文章展示
+              输入远程图床的封面图片 URL（例如：https://example.com/image.jpg）
             </FormDescription>
             <FormMessage />
           </FormItem>

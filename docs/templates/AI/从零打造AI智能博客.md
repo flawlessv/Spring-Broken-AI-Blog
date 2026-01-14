@@ -7,12 +7,10 @@ featured: true
 category: ai
 publishedAt: 2026-01-10
 readingTime: 18
-coverImage: /images/broken/cover.gif
+coverImage: https://tvax3.sinaimg.cn/large/006zSFKrgy1i9ahgagqyzj34802dcu10.jpg
 tags:
   - Next.js
-  - RAG
   - Prompt
-  - 全栈开发
 ---
 
 **🔗 线上地址**：[http://powder.icu/](http://powder.icu/)

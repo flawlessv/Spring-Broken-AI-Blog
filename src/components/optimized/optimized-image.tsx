@@ -17,6 +17,7 @@ interface OptimizedImageProps {
   fallbackSrc?: string;
   blurDataURL?: string;
   loading?: "lazy" | "eager";
+  unoptimized?: boolean; // 支持远程图片
 }
 
 // 极低质量的模糊占位符 (用于渐进式加载)
@@ -115,6 +116,9 @@ export function OptimizedCover({
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
 
+  // 检测是否为远程图片URL
+  const isRemoteUrl = src && (src.startsWith("http://") || src.startsWith("https://"));
+
   return (
     <div
       className={cn(
@@ -135,12 +139,13 @@ export function OptimizedCover({
           quality={85}
           priority={priority}
           loading={priority ? "eager" : "lazy"}
+          unoptimized={isRemoteUrl ? true : false}
           className={cn(
             "object-cover transition-all duration-500",
             isLoading ? "opacity-0 scale-105" : "opacity-100 scale-100"
           )}
-          placeholder="blur"
-          blurDataURL={generateBlurPlaceholder(10, 10)}
+          placeholder={isRemoteUrl ? undefined : "blur" as any} // 远程图片不使用模糊占位符
+          blurDataURL={isRemoteUrl ? undefined : generateBlurPlaceholder(10, 10)}
           onLoad={() => setIsLoading(false)}
           onError={() => {
             setHasError(true);

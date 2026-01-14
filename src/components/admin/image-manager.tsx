@@ -194,66 +194,39 @@ export default function ImageManager() {
               <Badge variant="secondary">共 {postImages.total} 张图片</Badge>
             </div>
 
-            {/* 封面图区块 */}
-            <div className="border rounded-lg p-6 bg-card">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold flex items-center gap-2">
-                  <ImageIcon className="h-5 w-5" />
-                  封面图
-                </h3>
-              </div>
+            {/* 封面图区块 - 仅显示，不支持上传 */}
+            {postImages.cover && (
+              <div className="border rounded-lg p-6 bg-card">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold flex items-center gap-2">
+                    <ImageIcon className="h-5 w-5" />
+                    封面图（远程图床）
+                  </h3>
+                </div>
 
-              {postImages.cover ? (
+                {/* 封面图预览 */}
                 <div className="space-y-4">
-                  {/* 封面图预览 */}
                   <div className="relative aspect-video w-full max-w-2xl rounded-lg overflow-hidden border bg-muted">
                     <Image
                       src={postImages.cover.path}
                       alt="封面图"
                       fill
                       className="object-cover"
+                      unoptimized // 远程图片不需要优化
                     />
                   </div>
 
                   {/* 封面图信息 */}
-                  <div className="flex items-center justify-between text-sm">
-                    <div>
-                      <p className="font-medium">{postImages.cover.filename}</p>
-                      <p className="text-muted-foreground">
-                        {(postImages.cover.size / 1024 / 1024).toFixed(2)} MB
-                      </p>
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleDeleteImage()}
-                    >
-                      更换封面
-                    </Button>
+                  <div className="text-sm">
+                    <p className="font-medium">{postImages.cover.filename}</p>
+                    <p className="text-muted-foreground">{postImages.cover.path}</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      封面图使用远程图床链接，请在发布文章时设置
+                    </p>
                   </div>
-
-                  {/* 上传新封面（替换） */}
-                  <details className="border rounded-lg p-4">
-                    <summary className="cursor-pointer font-medium text-sm">
-                      上传新封面（替换当前封面）
-                    </summary>
-                    <div className="mt-4">
-                      <ImageUploader
-                        postId={postImages.post.id}
-                        type="cover"
-                        onUploadComplete={handleUploadComplete}
-                      />
-                    </div>
-                  </details>
                 </div>
-              ) : (
-                <ImageUploader
-                  postId={postImages.post.id}
-                  type="cover"
-                  onUploadComplete={handleUploadComplete}
-                />
-              )}
-            </div>
+              </div>
+            )}
 
             {/* 内容配图区块 */}
             <div className="border rounded-lg p-6 bg-card">

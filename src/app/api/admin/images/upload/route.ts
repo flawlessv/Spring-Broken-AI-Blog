@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
     // 解析表单数据
     const formData = await request.formData();
     const postId = formData.get("postId") as string;
-    const type = formData.get("type") as "cover" | "content";
+    const type = formData.get("type") as "content"; // 仅支持内容配图上传
     const file = formData.get("file") as File;
 
     // 参数验证
@@ -47,9 +47,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (type !== "cover" && type !== "content") {
+    if (type !== "content") {
       return NextResponse.json(
-        { error: "type 必须是 cover 或 content" },
+        { error: "仅支持上传内容配图，封面图请使用远程图床链接" },
         { status: 400 }
       );
     }
@@ -72,8 +72,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 验证文件大小
-    const sizeValidation = validateFileSize(file.size, type);
+    // 验证文件大小（内容配图最大 5MB）
+    const sizeValidation = validateFileSize(file.size, "content");
     if (!sizeValidation.valid) {
       return NextResponse.json(
         { error: sizeValidation.error },
@@ -87,31 +87,10 @@ export async function POST(request: NextRequest) {
     // 生成文件名（保留原文件名的有意义部分）
     const ext = getExtensionFromMimeType(file.type);
     const originalName = file.name.replace(/\.[^/.]+$/, ""); // 去除扩展名
-    const baseFilename = generateImageFilename(type, ext, originalName);
+    const baseFilename = generateImageFilename("content", ext, originalName);
 
     // 确保文件名唯一（如果已存在则自动添加序号）
     const filename = await generateUniqueFilename(post.slug, baseFilename);
-
-    // 如果是封面图，删除已存在的封面图
-    if (type === "cover") {
-      const existingCover = await prisma.image.findFirst({
-        where: { postId, type: "COVER" },
-      });
-
-      if (existingCover) {
-        // 删除文件系统中的旧封面
-        try {
-          await deleteImageFile(existingCover.path);
-        } catch (error) {
-          console.error("删除旧封面图文件失败:", error);
-        }
-
-        // 删除数据库记录
-        await prisma.image.delete({
-          where: { id: existingCover.id },
-        });
-      }
-    }
 
     // 写入文件
     const bytes = await file.arrayBuffer();
@@ -126,7 +105,7 @@ export async function POST(request: NextRequest) {
     );
     await writeFile(filePath, buffer);
 
-    // 保存到数据库
+    // 保存到数据库（仅保存内容配图）
     const imagePath = getImageUrl(post.slug, filename);
     const image = await prisma.image.create({
       data: {
@@ -134,18 +113,10 @@ export async function POST(request: NextRequest) {
         path: imagePath,
         size: file.size,
         mimeType: file.type,
-        type: type === "cover" ? "COVER" : "CONTENT",
+        type: "CONTENT", // 固定为内容配图
         postId,
       },
     });
-
-    // 如果是封面图，更新文章的 coverImage 字段
-    if (type === "cover") {
-      await prisma.post.update({
-        where: { id: postId },
-        data: { coverImage: imagePath },
-      });
-    }
 
     return NextResponse.json({
       success: true,
