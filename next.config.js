@@ -43,14 +43,21 @@ const nextConfig = {
         hostname: "**",
       },
     ],
-    // 图片格式优化
-    formats: ["image/webp", "image/avif"],
-    // 设备尺寸（减少尺寸数量以加快构建）
-    deviceSizes: [640, 750, 828, 1080, 1200, 1920],
-    // 图片尺寸（减少尺寸数量以加快构建）
-    imageSizes: [16, 32, 48, 64, 96, 128, 256],
-    // 最小缓存时间（秒）
-    minimumCacheTTL: 60,
+    // 图片格式优化 - 优先使用 AVIF，降级到 WebP
+    formats: ["image/avif", "image/webp"],
+    // 设备尺寸 - 优化为常用尺寸，减少构建时间
+    deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
+    // 图片尺寸 - 更精细的尺寸梯度
+    imageSizes: [16, 32, 48, 64, 96, 128, 256, 384, 512],
+    // 最小缓存时间（秒）- 增加缓存时间提升性能
+    minimumCacheTTL: 31536000, // 1年
+    // 图片质量 - 默认质量设置
+    quality: 75, // 降低默认质量以减小文件大小，75是质量和体积的最佳平衡点
+    // 启用渐进式加载
+    experimental: {
+      // 启用优化包导入
+      optimizePackageImports: ["lucide-react"],
+    },
   },
   /**
    * 其他常用配置项（当前未启用）：

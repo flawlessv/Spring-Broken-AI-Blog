@@ -7,7 +7,7 @@ featured: true
 category: ai
 publishedAt: 2026-01-10
 readingTime: 18
-coverImage: /public/images/broken/cover.gif
+coverImage: /images/broken/cover.gif
 tags:
   - Next.js
   - RAG

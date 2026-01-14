@@ -6,7 +6,7 @@ featured: true
 category: ai
 publishedAt: 2025-07-09
 readingTime: 14
-coverImage: /images/posts/ai-prompt/cover.png
+coverImage: /images/posts/ai-prompt/cover.jpg
 tags:
   - prompt
 ---

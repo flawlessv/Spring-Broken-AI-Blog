@@ -11,7 +11,7 @@ tags:
   - Agent
   - MCP
   - RAG
-coverImage: /images/posts/ai-base/cover.png
+coverImage: /images/posts/ai-base/cover.jpg
 ---
 
 ## 1. 背景介绍
