@@ -2,7 +2,7 @@
 
 import { ReactNode, useState, useEffect } from "react";
 import Link from "next/link";
-import { LayoutDashboard, Moon, Sun } from "lucide-react";
+import { LayoutDashboard, Moon, Sun, Menu, X } from "lucide-react";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { cn } from "@/lib/utils";
 
@@ -10,15 +10,18 @@ interface PublicLayoutProps {
   children: ReactNode;
   extraButtons?: ReactNode; // 额外的按钮，用于文章详情页的沉浸式阅读
   leftButtons?: ReactNode; // 左侧按钮，用于返回等操作
+  sidebar?: ReactNode; // 移动端侧边栏内容
 }
 
 export default function PublicLayout({
   children,
   extraButtons,
   leftButtons,
+  sidebar,
 }: PublicLayoutProps) {
   const [mounted, setMounted] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -49,7 +52,21 @@ export default function PublicLayout({
           )}
         >
           {/* 左侧区域 */}
-          <div className="flex items-center gap-4">{leftButtons}</div>
+          <div className="flex items-center gap-4">
+            {sidebar && (
+              <button
+                onClick={() => setSidebarOpen(!sidebarOpen)}
+                className="lg:hidden inline-flex items-center justify-center p-2 rounded-lg hover:bg-accent transition-colors"
+              >
+                {sidebarOpen ? (
+                  <X className="w-4 h-4 text-foreground" strokeWidth={2} />
+                ) : (
+                  <Menu className="w-4 h-4 text-foreground" strokeWidth={2} />
+                )}
+              </button>
+            )}
+            {leftButtons}
+          </div>
 
           {/* 右侧区域 */}
           <div className="flex items-center gap-2 sm:gap-4">
@@ -73,6 +90,21 @@ export default function PublicLayout({
       <main className="flex-1 w-full px-6 lg:px-12 pt-16 pb-16 animate-fade-in">
         <div className="w-full">{children}</div>
       </main>
+
+      {/* 移动端侧边栏 */}
+      {sidebar && sidebarOpen && (
+        <div className="lg:hidden fixed inset-0 z-50">
+          {/* 背景遮罩 */}
+          <div
+            className="absolute inset-0 bg-black/50"
+            onClick={() => setSidebarOpen(false)}
+          />
+          {/* 侧边栏内容 */}
+          <div className="absolute left-0 top-0 bottom-0 w-80 bg-background shadow-xl p-6 overflow-y-auto">
+            {sidebar}
+          </div>
+        </div>
+      )}
 
       {/* 极简底部 */}
       <footer className="border-t border-border/40 bg-background mt-auto">
