@@ -2,8 +2,8 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { format } from "date-fns";
-import { OptimizedCover } from "@/components/optimized/optimized-image";
 
 interface Post {
   id: string;
@@ -69,7 +69,8 @@ export default function PostList({
     if (initialPosts.length === 0 && page === 1) {
       fetchPosts(1);
     }
-  }, [fetchPosts, initialPosts.length, page]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div className={`space-y-12 ${className}`}>
@@ -77,16 +78,25 @@ export default function PostList({
         <article key={post.id} className="w-full">
           <Link href={`/posts/${post.slug}`} className="group block w-full">
             <div className="relative w-full h-[220px] sm:h-[280px] overflow-hidden bg-gray-100">
-              {/* 背景图片 - 使用优化的图片组件 */}
+              {/* 背景图片 - 直接使用 Next.js Image */}
               <div className="absolute inset-0 transition-transform duration-700 group-hover:scale-105">
-                <OptimizedCover
-                  src={post.coverImage || ""}
-                  alt={post.title}
-                  className="w-full h-full"
-                  priority={index < 2}
-                />
-                {/* 叠加层：深色渐变保证文字可读性 */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/5 to-transparent"></div>
+                {post.coverImage ? (
+                  <>
+                    <Image
+                      src={post.coverImage}
+                      alt={post.title}
+                      fill
+                      sizes="(max-width: 640px) 100vw, (max-width: 1024px) 80vw, 70vw"
+                      priority={index === 0}
+                      className="object-cover"
+                      unoptimized={post.coverImage.startsWith("http")}
+                    />
+                    {/* 叠加层：深色渐变保证文字可读性 */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/5 to-transparent"></div>
+                  </>
+                ) : (
+                  <div className="absolute inset-0 bg-gradient-to-br from-gray-200 to-gray-300"></div>
+                )}
               </div>
 
               {/* 内容区域：左下角对齐 */}

@@ -35,36 +35,9 @@ export function OptimizedAvatar({
 }: Pick<OptimizedImageProps, "src" | "alt" | "className" | "priority">) {
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
-  const imgRef = useRef<HTMLDivElement>(null);
-
-  // 预加载图片
-  useEffect(() => {
-    if (!src) return;
-
-    const img = document.createElement("img");
-    img.src = src;
-
-    const handleLoad = () => {
-      setIsLoading(false);
-    };
-
-    const handleError = () => {
-      setIsLoading(false);
-      setHasError(true);
-    };
-
-    img.onload = handleLoad;
-    img.onerror = handleError;
-
-    return () => {
-      img.onload = null;
-      img.onerror = null;
-    };
-  }, [src]);
 
   return (
     <div
-      ref={imgRef}
       className={cn(
         "relative overflow-hidden bg-gray-100 dark:bg-gray-800",
         className
@@ -117,7 +90,8 @@ export function OptimizedCover({
   const [hasError, setHasError] = useState(false);
 
   // 检测是否为远程图片URL
-  const isRemoteUrl = src && (src.startsWith("http://") || src.startsWith("https://"));
+  const isRemoteUrl =
+    src && (src.startsWith("http://") || src.startsWith("https://"));
 
   return (
     <div
@@ -144,8 +118,10 @@ export function OptimizedCover({
             "object-cover transition-all duration-500",
             isLoading ? "opacity-0 scale-105" : "opacity-100 scale-100"
           )}
-          placeholder={isRemoteUrl ? undefined : "blur" as any} // 远程图片不使用模糊占位符
-          blurDataURL={isRemoteUrl ? undefined : generateBlurPlaceholder(10, 10)}
+          placeholder={isRemoteUrl ? undefined : ("blur" as any)} // 远程图片不使用模糊占位符
+          blurDataURL={
+            isRemoteUrl ? undefined : generateBlurPlaceholder(10, 10)
+          }
           onLoad={() => setIsLoading(false)}
           onError={() => {
             setHasError(true);

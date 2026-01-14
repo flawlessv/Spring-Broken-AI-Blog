@@ -53,7 +53,7 @@ export default function Home() {
       <>
         <SeasonalBackground />
         <FlowerClick />
-        <PublicLayout sidebar={null}>
+        <PublicLayout>
           <SimpleLoading />
         </PublicLayout>
       </>
@@ -68,11 +68,7 @@ export default function Home() {
       {/* 点击小红花效果 */}
       <FlowerClick />
 
-      <PublicLayout
-        sidebar={
-          <AdminProfileCard profile={profileData} categories={categories} />
-        }
-      >
+      <PublicLayout>
         <div className="flex flex-col lg:grid lg:grid-cols-[280px_1fr] gap-8 lg:gap-16 lg:ml-32">
           {/* 桌面端：个人信息在左侧 */}
           <aside className="hidden lg:block order-1 lg:order-none pt-4">

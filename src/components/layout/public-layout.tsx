@@ -2,7 +2,7 @@
 
 import { ReactNode, useState, useEffect } from "react";
 import Link from "next/link";
-import { LayoutDashboard, Moon, Sun, Menu, X } from "lucide-react";
+import { LayoutDashboard, Moon, Sun } from "lucide-react";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { cn } from "@/lib/utils";
 
@@ -10,17 +10,14 @@ interface PublicLayoutProps {
   children: ReactNode;
   extraButtons?: ReactNode; // 额外的按钮，用于文章详情页的沉浸式阅读
   leftButtons?: ReactNode; // 左侧按钮，用于返回等操作
-  sidebar?: ReactNode; // 侧边栏内容（个人信息和分类）
 }
 
 export default function PublicLayout({
   children,
   extraButtons,
   leftButtons,
-  sidebar,
 }: PublicLayoutProps) {
   const [mounted, setMounted] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
@@ -48,25 +45,11 @@ export default function PublicLayout({
         <div
           className={cn(
             "mx-auto px-6 lg:px-8 flex items-center justify-between w-full transition-all duration-300",
-            sidebar ? "max-w-7xl" : "max-w-5xl"
+            "max-w-7xl"
           )}
         >
           {/* 左侧区域 */}
-          <div className="flex items-center gap-4">
-            {sidebar && (
-              <button
-                onClick={() => setSidebarOpen(!sidebarOpen)}
-                className="lg:hidden inline-flex items-center justify-center p-2 rounded-lg hover:bg-accent transition-colors"
-              >
-                {sidebarOpen ? (
-                  <X className="w-4 h-4 text-foreground" strokeWidth={2} />
-                ) : (
-                  <Menu className="w-4 h-4 text-foreground" strokeWidth={2} />
-                )}
-              </button>
-            )}
-            {leftButtons}
-          </div>
+          <div className="flex items-center gap-4">{leftButtons}</div>
 
           {/* 右侧区域 */}
           <div className="flex items-center gap-2 sm:gap-4">

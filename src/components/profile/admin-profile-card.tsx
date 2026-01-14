@@ -1,7 +1,8 @@
 "use client";
 
-import React from "react";
+import React, { memo } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { Mail, User } from "lucide-react";
 import {
   Tooltip,
@@ -9,7 +10,6 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { OptimizedAvatar } from "@/components/optimized/optimized-image";
 
 interface AdminProfile {
   id: string;
@@ -38,10 +38,7 @@ interface AdminProfileCardProps {
   categories: Category[];
 }
 
-export default function AdminProfileCard({
-  profile,
-  categories,
-}: AdminProfileCardProps) {
+function AdminProfileCard({ profile, categories }: AdminProfileCardProps) {
   if (!profile) {
     return null;
   }
@@ -50,18 +47,23 @@ export default function AdminProfileCard({
 
   return (
     <TooltipProvider>
-      <div className="lg:sticky lg:top-12 w-full flex flex-col items-start font-sans">
+      <div
+        className="lg:sticky lg:top-12 w-full flex flex-col items-start font-sans"
+        suppressHydrationWarning
+      >
         {/* 顶部个人信息区域 */}
         <div className="flex items-start justify-between w-full relative pr-12">
           <div className="flex-1 space-y-4">
-            {/* 头像 - 使用优化的图片组件 */}
+            {/* 头像 - 直接使用 Next.js Image */}
             <div className="w-28 h-28 rounded-full border-[6px] border-black dark:border-white overflow-hidden bg-white flex-shrink-0 shadow-md">
               {avatar ? (
-                <OptimizedAvatar
+                <Image
                   src={avatar}
                   alt={displayName || profile.username}
-                  className="w-full h-full"
-                  priority={true}
+                  width={112}
+                  height={112}
+                  priority
+                  className="w-full h-full object-cover"
                 />
               ) : (
                 <div className="w-full h-full flex items-center justify-center">
@@ -209,3 +211,6 @@ export default function AdminProfileCard({
     </TooltipProvider>
   );
 }
+
+export default memo(AdminProfileCard);
+AdminProfileCard.displayName = "AdminProfileCard";

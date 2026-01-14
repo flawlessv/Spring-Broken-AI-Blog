@@ -47,11 +47,7 @@ export default function CategoryPage() {
   }
 
   return (
-    <PublicLayout
-      sidebar={
-        <AdminProfileCard profile={profileData} categories={categories} />
-      }
-    >
+    <PublicLayout>
       <div className="flex flex-col lg:grid lg:grid-cols-12 gap-6">
         {/* 个人信息卡片 */}
         <aside className="lg:col-span-3 order-1 lg:order-none lg:pl-8">
