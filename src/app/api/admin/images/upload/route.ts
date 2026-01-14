@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 验证文件大小（内容配图最大 5MB）
+    // 验证文件大小（内容配图最大 2MB）
     const sizeValidation = validateFileSize(file.size, "content");
     if (!sizeValidation.valid) {
       return NextResponse.json(

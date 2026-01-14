@@ -81,8 +81,8 @@ export default function ImageUploader({
         return false;
       }
 
-      // 检查文件大小（内容配图最大 5MB）
-      const maxSize = 5;
+      // 检查文件大小（内容配图最大 2MB）
+      const maxSize = 2;
       if (file.size > maxSize * 1024 * 1024) {
         toast({
           title: "文件过大",
@@ -214,7 +214,8 @@ export default function ImageUploader({
         <Upload className="h-10 w-10 mx-auto mb-4 text-muted-foreground" />
         <p className="text-sm font-medium mb-1">点击上传或拖拽图片到这里</p>
         <p className="text-xs text-muted-foreground">
-          支持 JPG、PNG、WebP、GIF，最大 5MB{maxFiles > 1 ? `，最多 ${maxFiles} 张` : ""}
+          支持 JPG、PNG、WebP、GIF，最大 2MB
+          {maxFiles > 1 ? `，最多 ${maxFiles} 张` : ""}
         </p>
       </div>
 

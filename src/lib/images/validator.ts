@@ -32,9 +32,9 @@ export const ALLOWED_EXTENSIONS = [
 export const MAX_SIZE_COVER = 2 * 1024 * 1024;
 
 /**
- * 内容配图最大大小（字节）- 5MB
+ * 内容配图最大大小（字节）- 2MB
  */
-export const MAX_SIZE_CONTENT = 5 * 1024 * 1024;
+export const MAX_SIZE_CONTENT = 2 * 1024 * 1024;
 
 /**
  * 验证结果接口
