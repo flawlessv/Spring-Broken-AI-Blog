@@ -27,6 +27,8 @@ const nextConfig = {
      * 注意：在生产环境构建时可能消耗较多资源，如果构建卡住可以临时禁用
      */
     typedRoutes: !isProd, // 生产环境禁用以加快构建速度
+    // 启用优化包导入
+    optimizePackageImports: ["lucide-react"],
   },
   basePath: "",
   // 图片优化配置
@@ -51,13 +53,6 @@ const nextConfig = {
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384, 512],
     // 最小缓存时间（秒）- 增加缓存时间提升性能
     minimumCacheTTL: 31536000, // 1年
-    // 图片质量 - 默认质量设置
-    quality: 75, // 降低默认质量以减小文件大小，75是质量和体积的最佳平衡点
-    // 启用渐进式加载
-    experimental: {
-      // 启用优化包导入
-      optimizePackageImports: ["lucide-react"],
-    },
   },
   /**
    * 其他常用配置项（当前未启用）：
