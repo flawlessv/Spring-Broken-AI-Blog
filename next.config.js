@@ -9,6 +9,12 @@
  * 文档：https://nextjs.org/docs/app/api-reference/next-config-js
  */
 const nextConfig = {
+  // 禁用构建工作线程 - 在服务器环境中可能导致构建中断
+  // BUILD_ID 缺失通常是由于构建工作线程在静态生成阶段异常退出
+  webpack: (config) => {
+    return config;
+  },
+
   // 实验性功能配置
   experimental: {
     /**
@@ -18,6 +24,8 @@ const nextConfig = {
      * 因此在生产环境完全禁用此功能
      */
     typedRoutes: false, // 完全禁用以避免构建问题
+    // 禁用构建工作线程
+    workerThreads: false,
     // 启用优化包导入
     optimizePackageImports: ["lucide-react"],
   },
