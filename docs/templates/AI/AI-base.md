@@ -11,7 +11,7 @@ tags:
   - Agent
   - MCP
   - RAG
-coverImage: https://tvax4.sinaimg.cn/large/006zSFKrgy1i9aj5i3l1tj31ti1cwguv.jpg
+coverImage: https://i.mituw.com/imgs/2026/01/15/9521028fbd45fccf.jpg
 ---
 
 ## 1. 背景介绍

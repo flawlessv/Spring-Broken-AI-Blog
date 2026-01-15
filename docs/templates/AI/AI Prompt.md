@@ -6,7 +6,7 @@ featured: true
 category: ai
 publishedAt: 2025-07-09
 readingTime: 14
-coverImage: https://tvax2.sinaimg.cn/large/006zSFKrgy1i9aj5fo1h3j32801o0toq.jpg
+coverImage: https://i.mituw.com/imgs/2026/01/15/f4b134f5ecaf7d73.jpg
 tags:
   - prompt
 ---
