@@ -123,21 +123,35 @@ jobs:
             echo "=== 清理旧的 Next.js 构建产物 ==="
             rm -rf .next
 
+            echo "=== 检查并设置 Swap 空间 ==="
+            if [ -f /swapfile ]; then
+                echo "✅ Swap 文件已存在"
+                swapon --show
+            else
+                echo "创建 4GB Swap 文件以避免 OOM..."
+                sudo fallocate -l 4G /swapfile 2>/dev/null || sudo dd if=/dev/zero of=/swapfile bs=1M count=4096
+                sudo chmod 600 /swapfile
+                sudo mkswap /swapfile
+                sudo swapon /swapfile
+                echo "✅ Swap 已启用"
+                free -h
+            fi
 
             echo "=== 构建 Next.js 项目 ==="
             echo "开始时间: $(date '+%Y-%m-%d %H:%M:%S')"
 
-            # 运行构建，使用 set -e 确保错误时立即退出
-            set +e  # 临时关闭错误退出
-            npm run build
-            BUILD_EXIT_CODE=$?
-            set -e  # 重新启用错误退出
+
+            # 运行构建，确保等待完成
+            npm run build 2>&1 | tee build.log
+            BUILD_EXIT_CODE=${PIPESTATUS[0]}
 
             echo "结束时间: $(date '+%Y-%m-%d %H:%M:%S')"
             echo "构建退出码: $BUILD_EXIT_CODE"
 
             if [ $BUILD_EXIT_CODE -ne 0 ]; then
                 echo "❌ 构建命令执行失败，退出码: $BUILD_EXIT_CODE"
+                echo "=== 构建日志（最后100行） ==="
+                tail -100 build.log
                 exit 1
             fi
 
@@ -149,19 +163,8 @@ jobs:
                 exit 1
             fi
 
-            # 列出 .next 目录内容用于诊断
-            echo "=== .next 目录内容 ==="
-            ls -la .next/
-
-            # 检查关键文件
             if [ ! -f ".next/BUILD_ID" ]; then
                 echo "❌ 错误: 构建不完整，BUILD_ID 文件缺失"
-                echo "=== .next 目录结构 ==="
-                find .next -type f -name "*.json" | head -20
-                echo "=== 检查构建日志 ==="
-                if [ -f ".next/build.log" ]; then
-                    cat .next/build.log
-                fi
                 exit 1
             fi
 
