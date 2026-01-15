@@ -261,6 +261,11 @@ export async function PATCH(
       updateData.featured = body.featured;
     }
 
+    // 处理封面图变更
+    if (body.coverImage !== undefined) {
+      updateData.coverImage = body.coverImage;
+    }
+
     const updatedPost = await prisma.post.update({
       where: { id },
       data: updateData,
