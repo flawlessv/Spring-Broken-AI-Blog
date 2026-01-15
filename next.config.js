@@ -8,25 +8,16 @@
  *
  * 文档：https://nextjs.org/docs/app/api-reference/next-config-js
  */
-const isProd = process.env.NODE_ENV === "production";
-
 const nextConfig = {
   // 实验性功能配置
   experimental: {
     /**
      * 类型化路由 (Typed Routes)
      *
-     * 启用后，Next.js 会自动生成路由的 TypeScript 类型
-     * 提供编译时的路由检查和自动完成
-     *
-     * 优势：
-     * - 防止路由拼写错误
-     * - 提供更好的 IDE 支持
-     * - 重构时自动更新路由引用
-     *
-     * 注意：在生产环境构建时可能消耗较多资源，如果构建卡住可以临时禁用
+     * 注意：在生产环境构建时可能导致 BUILD_ID 缺失的问题
+     * 因此在生产环境完全禁用此功能
      */
-    typedRoutes: !isProd, // 生产环境禁用以加快构建速度
+    typedRoutes: false, // 完全禁用以避免构建问题
     // 启用优化包导入
     optimizePackageImports: ["lucide-react"],
   },
