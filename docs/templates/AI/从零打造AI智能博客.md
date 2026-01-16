@@ -25,9 +25,9 @@ tags:
 
 先看看这个博客长什么样：
 
-![首页](/public/images/broken/shouye.png)
+![首页](/images/broken/shouye.png)
 
-![后台仪表盘](/public/images/broken/AI文章新建和编辑页.png)
+![后台仪表盘](/images/broken/AI文章新建和编辑页.png)
 
 项目用的技术栈：
 
@@ -136,7 +136,7 @@ ${content.slice(0, 3000)}
 
 这个功能是我觉得最有意思的一个，效果类似 GitHub Copilot 或者 Cursor，在你写文章的时候实时给你补全建议。
 
-![AI 写作助手](/public/images/broken/AI文章新建和编辑页.png)
+![AI 写作助手](/images/broken/AI文章新建和编辑页.png)
 
 ### 实现思路
 
@@ -249,7 +249,7 @@ RAG 是这个项目里我花时间最多的功能。
 
 RAG（Retrieval-Augmented Generation，检索增强生成）就是为了解决这个问题。简单说就是给大模型「开卷考试」：先从你的内容里检索相关信息，再让大模型基于这些信息回答。
 
-![RAG 问答](/public/images/broken/cover.gif)
+![RAG 问答](/images/broken/cover.gif)
 
 ### 我的实现思路
 
@@ -385,13 +385,13 @@ while (true) {
 
 除了上面说的 AI 功能，项目里还有一些基础功能：
 
-![文章管理](/public/images/broken/文章管理.png)
+![文章管理](/images/broken/文章管理.png)
 
-![文章详情](/public/images/broken/详情.png)
+![文章详情](/images/broken/详情.png)
 
-![登录页面](/public/images/broken/登陆.png)
+![登录页面](/images/broken/登陆.png)
 
-![关于我](/public/images/broken/关于我页面.png)
+![关于我](/images/broken/关于我页面.png)
 
 ### AI 生成标题、摘要、标签
 

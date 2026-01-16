@@ -768,7 +768,7 @@ export default function UnifiedPostsTable({
       },
       {
         label: "批量删除",
-        onClick: handleBatchDelete,
+        onClick: () => setIsBatchDeleting(true),
         variant: "danger" as const,
         icon: <Trash2 className="h-4 w-4 mr-2" />,
       },
@@ -778,31 +778,6 @@ export default function UnifiedPostsTable({
 
   return (
     <>
-      {/* 批量操作 */}
-      {batchActions && batchActions.length > 0 && selectedIds.length > 0 && (
-        <div className="flex items-center space-x-2 animate-in slide-in-from-bottom-2">
-          {batchActions.map((action, index) => (
-            <Button
-              key={index}
-              variant={action.variant === "danger" ? "destructive" : "outline"}
-              size="sm"
-              onClick={() => {
-                if (action.label === "批量删除") {
-                  setIsBatchDeleting(true);
-                } else {
-                  action.onClick(selectedIds);
-                }
-              }}
-              disabled={action.disabled}
-              className="h-8"
-            >
-              {action.icon}
-              {action.label}
-            </Button>
-          ))}
-        </div>
-      )}
-
       {/* 确认删除对话框 */}
       <DeleteConfirmDialog
         open={!!deleteId}
