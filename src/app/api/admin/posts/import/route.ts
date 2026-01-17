@@ -11,6 +11,8 @@ import { createSlug, calculateReadingTime, generateExcerpt } from "@/lib/utils";
 // 导入结果统计
 interface ImportResults {
   success: number;
+  updated: number; // 更新的文章数量
+  created: number; // 新建的文章数量
   failed: number;
   skipped: number;
   errors: string[];
@@ -24,6 +26,7 @@ interface ImportedPostInfo {
   title: string;
   slug: string;
   filePath?: string;
+  action: "created" | "updated"; // 标记是新建还是更新
 }
 
 // 文件结构信息
@@ -256,44 +259,77 @@ async function processFileImport(
       where: { slug: postData.slug },
     });
 
-    if (existingPost) {
-      results.failed++;
-      results.errors.push(`${displayPath}: 文章标识 "${postData.slug}" 已存在`);
-      return;
-    }
-
     // ========== 4. 处理分类 ==========
     const categoryId = await findCategory(postData.categoryName);
 
-    // ========== 5. 创建文章记录 ==========
-    const post = await prisma.post.create({
-      data: {
-        title: postData.title,
-        slug: postData.slug,
-        content: postData.content,
-        excerpt: postData.excerpt,
-        published: postData.published,
-        featured: postData.featured,
-        publishedAt: postData.publishedAt,
-        readingTime: postData.readingTime,
-        coverImage: postData.coverImage,
-        authorId: userId,
-        categoryId,
-      },
-    });
+    let post;
 
-    // ========== 6. 处理标签 ==========
-    if (postData.tags.length > 0) {
-      await attachTagsToPost(post.id, postData.tags);
+    if (existingPost) {
+      // ========== 5a. 更新现有文章 ==========
+      post = await prisma.post.update({
+        where: { id: existingPost.id },
+        data: {
+          title: postData.title,
+          slug: postData.slug,
+          content: postData.content,
+          excerpt: postData.excerpt,
+          published: postData.published,
+          featured: postData.featured,
+          publishedAt: postData.publishedAt,
+          readingTime: postData.readingTime,
+          coverImage: postData.coverImage,
+          categoryId,
+        },
+      });
+
+      // ========== 6a. 更新标签（删除旧的，添加新的）==========
+      // 先删除所有现有标签关联
+      await prisma.postTag.deleteMany({
+        where: { postId: post.id },
+      });
+
+      // 添加新的标签关联
+      if (postData.tags.length > 0) {
+        await attachTagsToPost(post.id, postData.tags);
+      }
+    } else {
+      // ========== 5b. 创建新文章 ==========
+      post = await prisma.post.create({
+        data: {
+          title: postData.title,
+          slug: postData.slug,
+          content: postData.content,
+          excerpt: postData.excerpt,
+          published: postData.published,
+          featured: postData.featured,
+          publishedAt: postData.publishedAt,
+          readingTime: postData.readingTime,
+          coverImage: postData.coverImage,
+          authorId: userId,
+          categoryId,
+        },
+      });
+
+      // ========== 6b. 处理标签 ==========
+      if (postData.tags.length > 0) {
+        await attachTagsToPost(post.id, postData.tags);
+      }
     }
 
     // ========== 7. 记录成功结果 ==========
     results.success++;
+    const action = existingPost ? "updated" : "created";
+    if (action === "updated") {
+      results.updated++;
+    } else {
+      results.created++;
+    }
     results.imported.push({
       id: post.id,
       title: post.title,
       slug: post.slug,
       filePath: displayPath,
+      action,
     });
   } catch (error) {
     // 记录失败结果
@@ -431,6 +467,8 @@ export async function POST(request: NextRequest) {
     // ============ 5. 初始化结果统计对象 ============
     const results: ImportResults = {
       success: 0,
+      updated: 0,
+      created: 0,
       failed: 0,
       skipped: 0,
       errors: [],
@@ -447,7 +485,8 @@ export async function POST(request: NextRequest) {
     // ============ 7. 返回导入结果 ============
     const message = [
       `导入完成:`,
-      `成功 ${results.success} 个`,
+      results.created > 0 ? `新建 ${results.created} 个` : null,
+      results.updated > 0 ? `更新 ${results.updated} 个` : null,
       results.failed > 0 ? `失败 ${results.failed} 个` : null,
       results.skipped > 0 ? `跳过 ${results.skipped} 个` : null,
     ]

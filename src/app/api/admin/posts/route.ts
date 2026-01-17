@@ -267,16 +267,46 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 检查slug是否已存在
+    // 检查slug是否已存在，如果存在则更新文章
     const existingPost = await prisma.post.findUnique({
       where: { slug: data.slug },
     });
 
     if (existingPost) {
-      return NextResponse.json(
-        { error: "该URL slug已存在，请选择其他" },
-        { status: 400 }
-      );
+      // 更新现有文章
+      const post = await prisma.post.update({
+        where: { id: existingPost.id },
+        data: {
+          title: data.title,
+          slug: data.slug,
+          content: data.content,
+          excerpt: data.excerpt,
+          coverImage: data.coverImage,
+          published: data.published,
+          featured: data.featured,
+          publishedAt: data.published ? new Date() : null,
+          categoryId: data.categoryId || null,
+          tags: data.tags
+            ? {
+                deleteMany: {}, // 删除现有标签关联
+                create: data.tags.map((tagId) => ({
+                  tag: { connect: { id: tagId } },
+                })),
+              }
+            : undefined,
+        },
+        include: {
+          author: {
+            include: { profile: true },
+          },
+          category: true,
+          tags: {
+            include: { tag: true },
+          },
+        },
+      });
+
+      return NextResponse.json(post);
     }
 
     // 验证 authorId 是否存在
