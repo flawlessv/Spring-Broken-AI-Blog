@@ -94,10 +94,7 @@ const workExperience = [
     period: "2024.07 - 至今",
     location: "武汉",
     image: "/images/about/xiaomi.jpg",
-    achievements: [
-      "独立负责玄戒芯片及手机费用管控核心系统开发",
-      "参与AI提效相关的开发以及知识分享",
-    ],
+    achievements: ["独立TOB内部中台开发", "参与AI提效相关的开发以及知识分享"],
   },
   {
     company: "杭州兑吧",
