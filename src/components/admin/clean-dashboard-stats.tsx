@@ -188,8 +188,16 @@ async function getUserInfo(userId: string) {
 }
 
 export default async function CleanDashboardStats() {
-  const stats = await getStats();
+  // 服务端认证检查
   const session = await getServerSession(authOptions);
+
+  if (!session?.user || session.user.role !== "ADMIN") {
+    // 未登录或权限不足时重定向到登录页
+    // 注意：这里返回空组件，实际重定向由中间件处理
+    return null;
+  }
+
+  const stats = await getStats();
   const { daysSinceStart, daysUntilTarget } = calculateDays();
   const greeting = getGreeting();
 

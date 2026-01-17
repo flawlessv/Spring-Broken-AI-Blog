@@ -11,30 +11,6 @@
 import { withAuth } from "next-auth/middleware";
 import { NextResponse } from "next/server";
 
-/**
- * 受保护的路由配置
- *
- * 这些路由需要用户登录才能访问
- */
-const protectedRoutes = [
-  "/admin", // 管理员主页
-  "/admin/:path*", // 所有管理员子路由
-];
-
-/**
- * 公开路由配置
- *
- * 这些路由不需要认证即可访问
- */
-const publicRoutes = [
-  "/", // 首页
-  "/login", // 登录页
-  "/api/auth/:path*", // NextAuth API 路由
-  "/posts/:path*", // 文章页面（前台）
-  "/categories/:path*", // 分类页面（前台）
-  "/tags/:path*", // 标签页面（前台）
-];
-
 export default withAuth(
   function middleware(req) {
     const { token } = req.nextauth;
@@ -49,11 +25,6 @@ export default withAuth(
     return NextResponse.next();
   },
   {
-    /**
-     * 中间件回调配置
-     *
-     * 用于决定何时运行中间件
-     */
     callbacks: {
       /**
        * 授权回调
@@ -64,8 +35,13 @@ export default withAuth(
       authorized: ({ token, req }) => {
         const { pathname } = req.nextUrl;
 
-        // 如果访问管理员路由，必须已登录
+        // 保护所有 /admin 路由（页面和 API）
         if (pathname.startsWith("/admin")) {
+          return !!token;
+        }
+
+        // 保护 /api/admin 路由
+        if (pathname.startsWith("/api/admin")) {
           return !!token;
         }
 
@@ -83,12 +59,15 @@ export default withAuth(
  * 中间件匹配器配置
  *
  * 定义哪些路由会运行中间件
- * 排除静态资源和 API 路由（除了认证相关的）
+ * 必须保护所有管理后台路由和 API
  */
 export const config = {
   matcher: [
-    // 仅保护 admin 路由，避免影响 API 与公开页面
+    // 保护所有管理后台页面
     "/admin/:path*",
+    // 保护所有管理后台 API
+    "/api/admin/:path*",
+    // 登录页面（用于重定向已登录用户）
     "/login",
   ],
 };
