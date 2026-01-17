@@ -7,6 +7,7 @@ category: ai
 publishedAt: 2026-01-17
 readingTime: 10
 tags: [AI, Claude Code, Skills, 工作流]
+coverImage: https://s41.ax1x.com/2026/01/17/pZyCDTH.jpg
 ---
 
 > 原文作者：Yuker

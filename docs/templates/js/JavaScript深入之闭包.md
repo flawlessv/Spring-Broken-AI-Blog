@@ -4,6 +4,7 @@ description: JavaScript深入系列第八篇，介绍理论上的闭包和实践
 created: 2024-01-01T00:00:00 (UTC +08:00)
 tags: [JavaScript]
 category: 前端
+coverImage: todo
 ---
 
 # JavaScript深入之闭包

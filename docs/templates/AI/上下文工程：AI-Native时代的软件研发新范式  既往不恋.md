@@ -6,7 +6,7 @@ published: true
 category: ai
 publishedAt: 2026-01-17
 readingTime: 12
-tags: [AI, 软件工程, 上下文工程]
+coverImage: https://s41.ax1x.com/2026/01/17/pZyCskd.png
 ---
 
 > 原文作者：Rainman
