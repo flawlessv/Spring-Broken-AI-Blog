@@ -4,7 +4,6 @@ description: JavaScript深入系列，深入讲解执行上下文的完整机制
 created: 2024-01-01T00:00:00 (UTC +08:00)
 tags: [JavaScript]
 category: 前端
-coverImage: todo
 ---
 
 # JavaScript深入之执行上下文完全指南

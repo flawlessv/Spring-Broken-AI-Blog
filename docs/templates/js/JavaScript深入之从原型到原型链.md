@@ -4,7 +4,6 @@ description: JavaScript深入系列的第一篇，从原型与原型链开始讲
 created: 2024-01-01T00:00:00 (UTC +08:00)
 tags: [JavaScript]
 category: 前端
-coverImage: todo
 ---
 
 # JavaScript深入之从原型到原型链
