@@ -1,6 +1,14 @@
+---
+title: JavaScript深入之闭包
+description: JavaScript深入系列第八篇，介绍理论上的闭包和实践上的闭包，以及从作用域链的角度解析经典的闭包题。
+created: 2024-01-01T00:00:00 (UTC +08:00)
+tags: [JavaScript]
+category: 前端
+---
+
 # JavaScript深入之闭包
 
-> JavaScript深入系列第八篇，介绍理论上的闭包和实践上的闭包，以及从作用域链的角度解析经典的闭包题。
+闭包是 JavaScript 中最核心也最容易混淆的概念之一。面试中必问，实际开发中经常用到，但很多人只是会用，不理解原理。今天我想从理论和实践两个角度，帮你彻底搞懂闭包。
 
 ## 定义
 
@@ -107,7 +115,7 @@ fContext = {
 
 在这里再补充一个《JavaScript权威指南》英文原版对闭包的定义:
 
-> This combination of a function object and a scope (a set of variable bindings) in which the function’s variables are resolved is called a closure in the computer science literature.
+> This combination of a function object and a scope (a set of variable bindings) in which the function's variables are resolved is called a closure in the computer science literature.
 
 闭包在计算机科学中也只是一个普通的概念，大家不要去想得太复杂。
 
@@ -210,31 +218,3 @@ data[0]Context = {
 data[0]Context 的 AO 并没有 i 值，所以会沿着作用域链从匿名函数 Context.AO 中查找，这时候就会找 i 为 0，找到了就不会往 globalContext.VO 中查找了，即使 globalContext.VO 也有 i 的值(值为3)，所以打印的结果就是 0。
 
 data[1] 和 data[2] 是一样的道理。
-
-## 下一篇文章
-
-[JavaScript深入之参数按值传递](https://github.com/mqyqingfeng/Blog/issues/10)
-
-## 相关链接
-
-如果想了解执行上下文的具体变化，不妨循序渐进，阅读这六篇：
-
-[《JavaScript深入之词法作用域和动态作用域》](https://github.com/mqyqingfeng/Blog/issues/3)
-
-[《JavaScript深入之执行上下文栈》](https://github.com/mqyqingfeng/Blog/issues/4)
-
-[《JavaScript深入之变量对象》](https://github.com/mqyqingfeng/Blog/issues/5)
-
-[《JavaScript深入之作用域链》](https://github.com/mqyqingfeng/Blog/issues/6)
-
-[《JavaScript深入之从ECMAScript规范解读this》](https://github.com/mqyqingfeng/Blog/issues/7)
-
-[《JavaScript深入之执行上下文》](https://github.com/mqyqingfeng/Blog/issues/8)
-
-## 深入系列
-
-JavaScript深入系列目录地址：[https://github.com/mqyqingfeng/Blog](https://github.com/mqyqingfeng/Blog)。
-
-JavaScript深入系列预计写十五篇左右，旨在帮大家捋顺JavaScript底层知识，重点讲解如原型、作用域、执行上下文、变量对象、this、闭包、按值传递、call、apply、bind、new、继承等难点概念。
-
-如果有错误或者不严谨的地方，请务必给予指正，十分感谢。如果喜欢或者有所启发，欢迎star，对作者也是一种鼓励。

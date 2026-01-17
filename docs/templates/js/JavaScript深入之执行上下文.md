@@ -1,10 +1,18 @@
+---
+title: JavaScript深入之执行上下文
+description: JavaScript深入系列第七篇，结合之前所讲的四篇文章，以权威指南的demo为例，具体讲解当函数执行的时候，执行上下文栈、变量对象、作用域链是如何变化的。
+created: 2024-01-01T00:00:00 (UTC + 08:00)
+tags: [JavaScript]
+category: 前端
+---
+
 # JavaScript深入之执行上下文
 
 > JavaScript深入系列第七篇，结合之前所讲的四篇文章，以权威指南的demo为例，具体讲解当函数执行的时候，执行上下文栈、变量对象、作用域链是如何变化的。
 
-# 前言
+## 前言
 
-在[《JavaScript深入之执行上下文栈》](https://github.com/mqyqingfeng/Blog/issues/4)中讲到，当 JavaScript 代码执行一段可执行代码(executable code)时，会创建对应的执行上下文(execution contexts)。
+在《JavaScript深入之执行上下文栈》中讲到，当 JavaScript 代码执行一段可执行代码(executable code)时，会创建对应的执行上下文(execution contexts)。
 
 对于每个执行上下文，都有三个重要属性：
 
@@ -12,7 +20,7 @@
 - 作用域链(Scope chain)
 - this
 
-然后分别在[《JavaScript深入之变量对象》](https://github.com/mqyqingfeng/Blog/issues/5)、[《JavaScript深入之作用域链》](https://github.com/mqyqingfeng/Blog/issues/6)、[《JavaScript深入之从ECMAScript规范解读this》](https://github.com/mqyqingfeng/Blog/issues/7)中讲解了这三个属性。
+然后分别在《JavaScript深入之变量对象》、《JavaScript深入之作用域链》、《JavaScript深入之从ECMAScript规范解读this》中讲解了这三个属性。
 
 阅读本文前，如果对以上的概念不是很清楚，希望先阅读这些文章。
 
@@ -20,7 +28,7 @@
 
 ## 思考题
 
-在[《JavaScript深入之词法作用域和动态作用域》](https://github.com/mqyqingfeng/Blog/issues/3)中，提出这样一道思考题：
+在《JavaScript深入之词法作用域和动态作用域》中，提出这样一道思考题：
 
 ```js
 var scope = "global scope";
@@ -48,7 +56,7 @@ checkscope()();
 
 两段代码都会打印'local scope'。虽然两段代码执行的结果一样，但是两段代码究竟有哪些不同呢？
 
-紧接着就在下一篇[《JavaScript深入之执行上下文栈》](https://github.com/mqyqingfeng/Blog/issues/4)中，讲到了两者的区别在于执行上下文栈的变化不一样，然而，如果是这样笼统的回答，依然显得不够详细，本篇就会详细的解析执行上下文栈和执行上下文的具体变化过程。
+紧接着就在下一篇《JavaScript深入之执行上下文栈》中，讲到了两者的区别在于执行上下文栈的变化不一样，然而，如果是这样笼统的回答，依然显得不够详细，本篇就会详细的解析执行上下文栈和执行上下文的具体变化过程。
 
 ## 具体执行分析
 
@@ -176,32 +184,8 @@ checkscope()();
 
 不过，在下一篇《JavaScript深入之闭包》中也会提及这段代码的执行过程。
 
-## 下一篇文章
-
-[《JavaScript深入之闭包》](https://github.com/mqyqingfeng/Blog/issues/9)
-
-## 相关链接
-
-[《JavaScript深入之词法作用域和动态作用域》](https://github.com/mqyqingfeng/Blog/issues/3)
-
-[《JavaScript深入之执行上下文栈》](https://github.com/mqyqingfeng/Blog/issues/4)
-
-[《JavaScript深入之变量对象》](https://github.com/mqyqingfeng/Blog/issues/5)
-
-[《JavaScript深入之作用域链》](https://github.com/mqyqingfeng/Blog/issues/6)
-
-[《JavaScript深入之从ECMAScript规范解读this》](https://github.com/mqyqingfeng/Blog/issues/7)
-
 ## 重要参考
 
 [《一道js面试题引发的思考》](https://github.com/kuitos/kuitos.github.io/issues/18)
 
 本文写的太好，给了我很多启发。感激不尽！
-
-## 深入系列
-
-JavaScript深入系列目录地址：[https://github.com/mqyqingfeng/Blog](https://github.com/mqyqingfeng/Blog)。
-
-JavaScript深入系列预计写十五篇左右，旨在帮大家捋顺JavaScript底层知识，重点讲解如原型、作用域、执行上下文、变量对象、this、闭包、按值传递、call、apply、bind、new、继承等难点概念。
-
-如果有错误或者不严谨的地方，请务必给予指正，十分感谢。如果喜欢或者有所启发，欢迎star，对作者也是一种鼓励。

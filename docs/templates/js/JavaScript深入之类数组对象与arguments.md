@@ -1,3 +1,11 @@
+---
+title: JavaScript深入之类数组对象与arguments
+description: JavaScript深入系列第十三篇，讲解类数组对象与对象的相似与差异以及arguments的注意要点
+created: 2024-01-01T00:00:00 (UTC +08:00)
+tags: [JavaScript]
+category: 前端
+---
+
 # JavaScript深入之类数组对象与arguments
 
 > JavaScript深入系列第十三篇，讲解类数组对象与对象的相似与差异以及arguments的注意要点
@@ -246,15 +254,3 @@ arguments的应用其实很多，在下个系列，也就是 JavaScript 专题�
    ...
 
 欢迎留言回复。
-
-## 下一篇文章
-
-[JavaScript深入之创建对象的多种方式以及优缺点](https://github.com/mqyqingfeng/Blog/issues/15)
-
-## 深入系列
-
-JavaScript深入系列目录地址：[https://github.com/mqyqingfeng/Blog](https://github.com/mqyqingfeng/Blog)。
-
-JavaScript深入系列预计写十五篇左右，旨在帮大家捋顺JavaScript底层知识，重点讲解如原型、作用域、执行上下文、变量对象、this、闭包、按值传递、call、apply、bind、new、继承等难点概念。
-
-如果有错误或者不严谨的地方，请务必给予指正，十分感谢。如果喜欢或者有所启发，欢迎star，对作者也是一种鼓励。

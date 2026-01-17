@@ -1,10 +1,18 @@
+---
+title: JavaScript深入之变量对象
+description: JavaScript深入系列第四篇，具体讲解执行上下文中的变量对象与活动对象。全局上下文下的变量对象是什么？函数上下文下的活动对象是如何分析和执行的？
+created: 2024-01-01T00:00:00 (UTC +08:00)
+tags: [JavaScript]
+category: 前端
+---
+
 # JavaScript深入之变量对象
 
 > JavaScript深入系列第四篇，具体讲解执行上下文中的变量对象与活动对象。全局上下文下的变量对象是什么？函数上下文下的活动对象是如何分析和执行的？还有两个思考题帮你加深印象，快来看看吧！
 
 ## 前言
 
-在上篇[《JavaScript深入之执行上下文栈》](https://github.com/mqyqingfeng/Blog/issues/4)中讲到，当 JavaScript 代码执行一段可执行代码(executable code)时，会创建对应的执行上下文(execution context)。
+在上篇《JavaScript深入之执行上下文栈》中讲到，当 JavaScript 代码执行一段可执行代码(executable code)时，会创建对应的执行上下文(execution context)。
 
 对于每个执行上下文，都有三个重要属性：
 
@@ -30,7 +38,7 @@
 
 > 例如，当JavaScript 代码引用 parseInt() 函数时，它引用的是全局对象的 parseInt 属性。全局对象是作用域链的头，还意味着在顶层 JavaScript 代码中声明的所有变量都将成为全局对象的属性。
 
-如果看的不是很懂的话，容我再来介绍下全局对象:
+如果理解起来有些困难，下面再来详细介绍全局对象：
 
 1.可以通过 this 引用，在客户端 JavaScript 中，全局对象就是 Window 对象。
 
@@ -44,7 +52,7 @@ console.log(this);
 console.log(this instanceof Object);
 ```
 
-3.预定义了一堆，嗯，一大堆函数和属性。
+3.预定义了许多函数和属性。
 
 ```js
 // 都能生效
@@ -69,9 +77,9 @@ this.window.b = 2;
 console.log(this.b);
 ```
 
-花了一个大篇幅介绍全局对象，其实就想说：
+花了一个大篇幅介绍全局对象，其实结论就是：
 
-全局上下文中的变量对象就是全局对象呐！
+全局上下文中的变量对象就是全局对象。
 
 ## 函数上下文
 
@@ -220,19 +228,3 @@ var foo = 1;
 会打印函数，而不是 undefined 。
 
 这是因为在进入执行上下文时，首先会处理函数声明，其次会处理变量声明，如果如果变量名称跟已经声明的形式参数或函数相同，则变量声明不会干扰已经存在的这类属性。
-
-## 下一篇文章
-
-[《JavaScript深入之作用域链》](https://github.com/mqyqingfeng/Blog/issues/6)
-
-## 本文相关链接
-
-[《JavaScript深入之执行上下文栈》](https://github.com/mqyqingfeng/Blog/issues/4)
-
-## 深入系列
-
-JavaScript深入系列目录地址：[https://github.com/mqyqingfeng/Blog](https://github.com/mqyqingfeng/Blog)。
-
-JavaScript深入系列预计写十五篇左右，旨在帮大家捋顺JavaScript底层知识，重点讲解如原型、作用域、执行上下文、变量对象、this、闭包、按值传递、call、apply、bind、new、继承等难点概念。
-
-如果有错误或者不严谨的地方，请务必给予指正，十分感谢。如果喜欢或者有所启发，欢迎star，对作者也是一种鼓励。

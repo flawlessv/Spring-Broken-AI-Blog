@@ -1,3 +1,11 @@
+---
+title: JavaScript深入之参数按值传递
+description: JavaScript深入系列第九篇，除了按值传递、引用传递，还有第三种传递方式 —— 按共享传递
+created: 2024-01-01T00:00:00 (UTC +08:00)
+tags: [JavaScript]
+category: 前端
+---
+
 # JavaScript深入之参数按值传递
 
 > JavaScript深入系列第九篇，除了按值传递、引用传递，还有第三种传递方式 —— 按共享传递
@@ -87,15 +95,3 @@ console.log(obj.value); // 1
 但是因为拷贝副本也是一种值的拷贝，所以在高程中也直接认为是按值传递了。
 
 所以，高程，谁叫你是红宝书嘞！
-
-## 下一篇文章
-
-[JavaScript深入之call和apply的模拟实现](https://github.com/mqyqingfeng/Blog/issues/11)
-
-## 深入系列
-
-JavaScript深入系列目录地址：[https://github.com/mqyqingfeng/Blog](https://github.com/mqyqingfeng/Blog)。
-
-JavaScript深入系列预计写十五篇左右，旨在帮大家捋顺JavaScript底层知识，重点讲解如原型、作用域、执行上下文、变量对象、this、闭包、按值传递、call、apply、bind、new、继承等难点概念。
-
-如果有错误或者不严谨的地方，请务必给予指正，十分感谢。如果喜欢或者有所启发，欢迎star，对作者也是一种鼓励。
