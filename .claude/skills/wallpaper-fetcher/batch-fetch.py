@@ -12,7 +12,7 @@ import random
 
 # Configuration - 保存到桌面
 BASE_DIR = Path.home() / "Desktop" / "skills-img"
-BATCH_SIZE = 10  # 每次获取10张
+BATCH_SIZE = 20  # 获取20张
 
 
 def fetch_scenic_wallpaper():
