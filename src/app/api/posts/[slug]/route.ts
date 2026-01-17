@@ -72,6 +72,7 @@ export async function GET(
       updatedAt: post.updatedAt,
       publishedAt: post.publishedAt,
       author: post.author,
+      category: post.category, // 保留完整分类对象，方便判断是否为随笔
       categories: post.category ? [post.category] : [],
       tags: post.tags.map((postTag) => postTag.tag),
       commentsCount: 0,

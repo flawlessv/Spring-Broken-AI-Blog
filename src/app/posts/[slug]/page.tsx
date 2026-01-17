@@ -4,12 +4,12 @@ import Link from "next/link";
 import { format } from "date-fns";
 import { zhCN } from "date-fns/locale";
 import { ChevronLeft } from "lucide-react";
-import Image from "next/image";
 
 import PublicLayout from "@/components/layout/public-layout";
 import MarkdownRenderer from "@/components/markdown/markdown-renderer";
 import { ImmersiveReaderToggle } from "@/components/immersive-reader";
 import RelatedPosts from "@/components/posts/related-posts";
+import EssayPostView from "@/components/posts/essay-post-view";
 import { SeasonalBackground } from "@/components/home/seasonal-background";
 import { FlowerClick } from "@/components/home/flower-click";
 import { OptimizedAvatar } from "@/components/optimized/optimized-image";
@@ -31,6 +31,12 @@ interface Post {
       displayName?: string;
       avatar?: string;
     };
+  };
+  category?: {
+    id: string;
+    name: string;
+    slug: string;
+    color?: string;
   };
   categories: Array<{
     id: string;
@@ -100,6 +106,42 @@ export default async function PostPage({
     notFound();
   }
 
+  // 判断是否为随笔分类（通过分类名称或 slug 判断）
+  const isEssayPost =
+    post.category?.slug === "essay" || post.category?.name === "随笔";
+
+  // 随笔风格使用专门的模板
+  if (isEssayPost) {
+    return (
+      <>
+        <SeasonalBackground />
+        <FlowerClick />
+        <PublicLayout
+          leftButtons={
+            <Link
+              href="/"
+              className="inline-flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
+            >
+              <ChevronLeft className="w-4 h-4" />
+              <span>返回首页</span>
+            </Link>
+          }
+          extraButtons={<></>}
+        >
+          <EssayPostView
+            title={post.title}
+            content={post.content || "暂无内容"}
+            createdAt={post.createdAt}
+            updatedAt={post.updatedAt}
+            publishedAt={post.publishedAt}
+            author={post.author}
+          />
+        </PublicLayout>
+      </>
+    );
+  }
+
+  // 默认的文章样式
   return (
     <>
       {/* 季节背景效果 */}
