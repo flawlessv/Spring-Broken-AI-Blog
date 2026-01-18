@@ -4,6 +4,7 @@ description: JavaScript深入系列第六篇，本篇我们追根溯源，从ECM
 created: 2024-01-01T00:00:00 (UTC +08:00)
 tags: [JavaScript]
 category: 前端
+coverImage: https://pic1.imgdb.cn/item/696c6b3dcc965d6157f6b771.jpg
 ---
 
 # JavaScript深入之从ECMAScript规范解读this

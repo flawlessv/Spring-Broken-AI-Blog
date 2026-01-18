@@ -7,7 +7,7 @@ featured: true
 category: ai
 publishedAt: 2026-01-10
 readingTime: 18
-coverImage: https://i.mituw.com/imgs/2026/01/15/0ab714816821fefa.jpg
+coverImage: https://pic1.imgdb.cn/item/696c6c68cc965d6157f6bac4.jpg
 tags:
   - Next.js
   - Prompt

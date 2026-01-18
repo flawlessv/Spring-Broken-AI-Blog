@@ -4,7 +4,7 @@ description: VibeCoding是一种AI辅助编程的新范式。
 created: 2024-01-01T00:00:00 (UTC +08:00)
 tags: [AI, 编程]
 category: ai
-coverImage: https://s41.ax1x.com/2026/01/17/pZyCdOO.jpg
+coverImage: https://pic1.imgdb.cn/item/696c6c3ecc965d6157f6ba5a.jpg
 ---
 
 # 选对模型/工具

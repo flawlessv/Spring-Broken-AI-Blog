@@ -3,7 +3,7 @@ title: 用心写一次INFJ
 slug: writing-about-infj
 date: 2024-12-25
 category: 随笔
-coverImage: https://s41.ax1x.com/2026/01/17/pZyCUl6.jpg
+coverImage: https://pic1.imgdb.cn/item/696c6c39cc965d6157f6ba4c.jpg
 ---
 
 你要写他，就先写一只学会在玻璃瓶里呼吸的鱼——童年时每一次张嘴，都化作无声的气泡。少年时他长出透明的触角，刚向世界探出，就被说"太敏感了"，于是慢慢缩回体内。成年后，他长成一个活体容器，装着沸腾却从不沸腾的安静。

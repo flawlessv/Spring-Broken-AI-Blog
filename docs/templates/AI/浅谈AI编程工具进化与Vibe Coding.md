@@ -6,7 +6,7 @@ featured: true
 category: ai
 publishedAt: 2025-11-14
 readingTime: 14
-coverImage: https://i.mituw.com/imgs/2026/01/15/14636a23baeb7a76.jpg
+coverImage: https://pic1.imgdb.cn/item/696c6c61cc965d6157f6bab2.png
 ---
 
 > 本来是想顺应部门的战略写一篇关于全栈基础知识的文章，但是最近涌现了很多五花八门不同形式的AI辅助编程工具，公司的MiCode也开始大范围推广并且取得了不错的效果，而且最近好像又开始鼓励AI方面的分享，想了想还是写一篇文章来简单介绍下目前不同形式AI工具的简单原理，以及我日常Vibe Coding的感想。
