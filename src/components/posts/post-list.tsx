@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { format } from "date-fns";
@@ -31,6 +31,7 @@ export default function PostList({
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(initialHasMore);
   const [loadingMore, setLoadingMore] = useState(false);
+  const observerTarget = useRef<HTMLDivElement>(null);
 
   const fetchPosts = useCallback(
     async (pageNum: number) => {
@@ -64,6 +65,31 @@ export default function PostList({
     },
     [categorySlug]
   );
+
+  // 无限滚动观察器
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !loadingMore) {
+          const nextPage = page + 1;
+          setPage(nextPage);
+          fetchPosts(nextPage);
+        }
+      },
+      { threshold: 0.1, rootMargin: "100px" }
+    );
+
+    const currentTarget = observerTarget.current;
+    if (currentTarget) {
+      observer.observe(currentTarget);
+    }
+
+    return () => {
+      if (currentTarget) {
+        observer.unobserve(currentTarget);
+      }
+    };
+  }, [hasMore, loadingMore, page, fetchPosts]);
 
   useEffect(() => {
     if (initialPosts.length === 0 && page === 1) {
@@ -121,6 +147,9 @@ export default function PostList({
         </article>
       ))}
 
+      {/* 观察目标 - 用于触发无限滚动 */}
+      <div ref={observerTarget} className="h-4" />
+
       {loadingMore && (
         <div className="text-center py-8">
           <div className="inline-flex items-center gap-3 text-gray-400">
@@ -128,6 +157,10 @@ export default function PostList({
             <span className="text-sm">加载中...</span>
           </div>
         </div>
+      )}
+
+      {!hasMore && posts.length > 0 && (
+        <div className="text-center py-8 text-gray-400 text-sm">已经到底啦</div>
       )}
     </div>
   );

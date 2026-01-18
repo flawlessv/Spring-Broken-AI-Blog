@@ -12,6 +12,7 @@ export default function Home() {
   const [profileData, setProfileData] = useState<any>(null);
   const [categories, setCategories] = useState<any[]>([]);
   const [postsData, setPostsData] = useState<any[]>([]);
+  const [hasMore, setHasMore] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -37,6 +38,8 @@ export default function Home() {
         if (postsRes.ok) {
           const data = await postsRes.json();
           setPostsData(data.posts);
+          // 判断是否还有更多数据
+          setHasMore(data.pagination.current < data.pagination.pages);
         }
       } catch (error) {
         console.error("获取数据失败:", error);
@@ -83,7 +86,7 @@ export default function Home() {
 
           {/* 文章列表 */}
           <main className="order-2 lg:order-none max-w-2xl">
-            <PostList initialPosts={postsData} />
+            <PostList initialPosts={postsData} initialHasMore={hasMore} />
           </main>
         </div>
       </PublicLayout>
