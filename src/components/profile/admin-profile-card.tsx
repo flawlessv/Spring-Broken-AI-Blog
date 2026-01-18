@@ -118,7 +118,7 @@ function AdminProfileCard({ profile, categories }: AdminProfileCardProps) {
             {categories.map((category) => (
               <li key={category.id}>
                 <Link
-                  href={`/category/${category.slug}`}
+                  href={`/?category=${category.slug}`}
                   className="flex items-center gap-3 text-[15px] text-black dark:text-white hover:opacity-70 transition-all group"
                 >
                   <span className="text-lg opacity-100">

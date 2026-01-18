@@ -66,6 +66,14 @@ export default function PostList({
     [categorySlug]
   );
 
+  // 监听 initialPosts 变化，重置状态
+  useEffect(() => {
+    setPosts(initialPosts);
+    setPage(1);
+    setHasMore(initialHasMore);
+    setLoadingMore(false);
+  }, [initialPosts, initialHasMore, categorySlug]);
+
   // 无限滚动观察器
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -100,67 +108,81 @@ export default function PostList({
 
   return (
     <div className={`space-y-12 ${className}`}>
-      {posts.map((post, index) => (
-        <article key={post.id} className="w-full">
-          <Link href={`/posts/${post.slug}`} className="group block w-full">
-            <div className="relative w-full h-[220px] sm:h-[280px] overflow-hidden bg-gray-100">
-              {/* 背景图片 - 直接使用 Next.js Image */}
-              <div className="absolute inset-0 transition-transform duration-700 group-hover:scale-105">
-                {post.coverImage ? (
-                  <>
-                    <Image
-                      src={post.coverImage}
-                      alt={post.title}
-                      fill
-                      sizes="(max-width: 640px) 100vw, (max-width: 1024px) 80vw, 70vw"
-                      priority={index === 0}
-                      className="object-cover"
-                      unoptimized={post.coverImage.startsWith("http")}
-                    />
-                    {/* 叠加层：深色渐变保证文字可读性 */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/5 to-transparent"></div>
-                  </>
-                ) : (
-                  <div className="absolute inset-0 bg-gradient-to-br from-gray-200 to-gray-300"></div>
-                )}
-              </div>
-
-              {/* 内容区域：左下角对齐 */}
-              <div className="relative h-full flex flex-col justify-end p-6 sm:p-10 text-white">
-                <div className="space-y-3">
-                  {/* 日期：全大写，间距拉开 */}
-                  <div className="text-[11px] sm:text-[13px] font-bold tracking-[0.2em] uppercase opacity-90">
-                    {format(
-                      new Date(post.publishedAt || post.createdAt),
-                      "MMM dd, yyyy"
+      {posts.length === 0 && !loadingMore ? (
+        <div className="text-center py-16">
+          <div className="text-6xl mb-4">📭</div>
+          <h3 className="text-xl font-semibold text-gray-700 mb-2">暂无文章</h3>
+          <p className="text-gray-500 text-sm">
+            {categorySlug ? "该分类下还没有发布任何文章" : "还没有发布任何文章"}
+          </p>
+        </div>
+      ) : (
+        <>
+          {posts.map((post, index) => (
+            <article key={post.id} className="w-full">
+              <Link href={`/posts/${post.slug}`} className="group block w-full">
+                <div className="relative w-full h-[220px] sm:h-[280px] overflow-hidden bg-gray-100">
+                  {/* 背景图片 - 直接使用 Next.js Image */}
+                  <div className="absolute inset-0 transition-transform duration-700 group-hover:scale-105">
+                    {post.coverImage ? (
+                      <>
+                        <Image
+                          src={post.coverImage}
+                          alt={post.title}
+                          fill
+                          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 80vw, 70vw"
+                          priority={index === 0}
+                          className="object-cover"
+                          unoptimized={post.coverImage.startsWith("http")}
+                        />
+                        {/* 叠加层：深色渐变保证文字可读性 */}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/5 to-transparent"></div>
+                      </>
+                    ) : (
+                      <div className="absolute inset-0 bg-gradient-to-br from-gray-200 to-gray-300"></div>
                     )}
                   </div>
 
-                  {/* 标题：大且醒目 */}
-                  <h2 className="text-xl sm:text-2xl md:text-[28px] font-bold leading-tight drop-shadow-sm">
-                    {post.title}
-                  </h2>
+                  {/* 内容区域：左下角对齐 */}
+                  <div className="relative h-full flex flex-col justify-end p-6 sm:p-10 text-white">
+                    <div className="space-y-3">
+                      {/* 日期：全大写，间距拉开 */}
+                      <div className="text-[11px] sm:text-[13px] font-bold tracking-[0.2em] uppercase opacity-90">
+                        {format(
+                          new Date(post.publishedAt || post.createdAt),
+                          "MMM dd, yyyy"
+                        )}
+                      </div>
+
+                      {/* 标题：大且醒目 */}
+                      <h2 className="text-xl sm:text-2xl md:text-[28px] font-bold leading-tight drop-shadow-sm">
+                        {post.title}
+                      </h2>
+                    </div>
+                  </div>
                 </div>
+              </Link>
+            </article>
+          ))}
+
+          {/* 观察目标 - 用于触发无限滚动 */}
+          <div ref={observerTarget} className="h-4" />
+
+          {loadingMore && (
+            <div className="text-center py-8">
+              <div className="inline-flex items-center gap-3 text-gray-400">
+                <div className="w-5 h-5 border-2 border-t-black border-r-black/30 border-b-transparent border-l-transparent rounded-full animate-spin" />
+                <span className="text-sm">加载中...</span>
               </div>
             </div>
-          </Link>
-        </article>
-      ))}
+          )}
 
-      {/* 观察目标 - 用于触发无限滚动 */}
-      <div ref={observerTarget} className="h-4" />
-
-      {loadingMore && (
-        <div className="text-center py-8">
-          <div className="inline-flex items-center gap-3 text-gray-400">
-            <div className="w-5 h-5 border-2 border-t-black border-r-black/30 border-b-transparent border-l-transparent rounded-full animate-spin" />
-            <span className="text-sm">加载中...</span>
-          </div>
-        </div>
-      )}
-
-      {!hasMore && posts.length > 0 && (
-        <div className="text-center py-8 text-gray-400 text-sm">已经到底啦</div>
+          {!hasMore && posts.length > 0 && (
+            <div className="text-center py-8 text-gray-400 text-sm">
+              已经到底啦
+            </div>
+          )}
+        </>
       )}
     </div>
   );

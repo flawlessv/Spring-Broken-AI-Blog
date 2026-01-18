@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import PublicLayout from "@/components/layout/public-layout";
 import AdminProfileCard from "@/components/profile/admin-profile-card";
 import PostList from "@/components/posts/post-list";
@@ -9,6 +10,9 @@ import { FlowerClick } from "@/components/home/flower-click";
 import { SimpleLoading } from "@/components/ui/loading";
 
 export default function Home() {
+  const searchParams = useSearchParams();
+  const categorySlug = searchParams.get("category");
+
   const [profileData, setProfileData] = useState<any>(null);
   const [categories, setCategories] = useState<any[]>([]);
   const [postsData, setPostsData] = useState<any[]>([]);
@@ -17,12 +21,18 @@ export default function Home() {
 
   useEffect(() => {
     async function fetchData() {
+      // 切换分类时显示加载状态
+      setIsLoading(true);
       try {
         // 并行请求所有数据
         const [profileRes, categoriesRes, postsRes] = await Promise.all([
           fetch("/api/profile"),
           fetch("/api/categories"),
-          fetch("/api/posts?page=1&limit=10"),
+          fetch(
+            `/api/posts?page=1&limit=10${
+              categorySlug ? `&category=${categorySlug}` : ""
+            }`
+          ),
         ]);
 
         if (profileRes.ok) {
@@ -49,7 +59,7 @@ export default function Home() {
     }
 
     fetchData();
-  }, []);
+  }, [categorySlug]);
 
   if (isLoading) {
     return (
@@ -86,7 +96,12 @@ export default function Home() {
 
           {/* 文章列表 */}
           <main className="order-2 lg:order-none max-w-2xl">
-            <PostList initialPosts={postsData} initialHasMore={hasMore} />
+            <PostList
+              key={categorySlug || "all"}
+              initialPosts={postsData}
+              initialHasMore={hasMore}
+              categorySlug={categorySlug || undefined}
+            />
           </main>
         </div>
       </PublicLayout>
