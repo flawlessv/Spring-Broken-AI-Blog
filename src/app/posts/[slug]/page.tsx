@@ -169,7 +169,7 @@ export default async function PostPage({
           />
         }
       >
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="w-full max-w-5xl mx-auto px-2 sm:px-4">
           {/* 文章头部 */}
           <header className="mb-12 pt-8">
             {/* 分类和标签 */}

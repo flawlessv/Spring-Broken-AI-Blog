@@ -87,7 +87,7 @@ export default function PublicLayout({
       </header>
 
       {/* 主要内容 */}
-      <main className="flex-1 w-full px-6 lg:px-12 pt-16 pb-16 animate-fade-in">
+      <main className="flex-1 w-full px-4 sm:px-6 pt-16 pb-16 animate-fade-in">
         <div className="w-full">{children}</div>
       </main>
 
