@@ -6,7 +6,6 @@ published: true
 category: ai
 publishedAt: 2026-01-17
 readingTime: 10
-tags: [AI, Claude Code, Skills, 工作流]
 coverImage: https://pic1.imgdb.cn/item/696c6c3dcc965d6157f6ba56.jpg
 ---
 

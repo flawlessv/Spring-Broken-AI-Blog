@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import PublicLayout from "@/components/layout/public-layout";
 import AdminProfileCard from "@/components/profile/admin-profile-card";
@@ -9,7 +9,7 @@ import { SeasonalBackground } from "@/components/home/seasonal-background";
 import { FlowerClick } from "@/components/home/flower-click";
 import { SimpleLoading } from "@/components/ui/loading";
 
-export default function Home() {
+function HomeContent() {
   const searchParams = useSearchParams();
   const categorySlug = searchParams.get("category");
 
@@ -104,6 +104,26 @@ export default function Home() {
             />
           </main>
         </div>
+      </PublicLayout>
+    </>
+  );
+}
+
+export default function Home() {
+  return (
+    <Suspense fallback={<LoadingWrapper />}>
+      <HomeContent />
+    </Suspense>
+  );
+}
+
+function LoadingWrapper() {
+  return (
+    <>
+      <SeasonalBackground />
+      <FlowerClick />
+      <PublicLayout>
+        <SimpleLoading />
       </PublicLayout>
     </>
   );

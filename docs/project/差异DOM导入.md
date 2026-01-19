@@ -5,6 +5,12 @@
 我们有一个需求是把页面内容导出为图片，但导出的内容和当前页面展示的不一样。比如导出报告时需要隐藏操作按钮、调整布局样式，再比如当前页面有20个轮播图，每一页最多展示5个，导出的时候需要把20个轮播图全部平铺出来。
 
 这个需求的核心挑战是：**html2canvas本身不支持差异化DOM导出，它只是一个截图工具，只能对当前可见的DOM进行截图。**
+html2canvas并不是真正的屏幕截图，而是**模拟浏览器渲染过程**，将DOM转换为Canvas。它的工作流程是：
+
+1. **遍历DOM树** - 递归遍历目标元素，收集所有节点信息
+2. **计算样式** - 通过`getComputedStyle`获取每个节点的计算样式
+3. **构建渲染队列** - 根据层级关系（z-index、position）构建绘制队列
+4. **Canvas绘制** - 使用Canvas API（fillRect、fillText、drawImage）进行绘制
 
 主要问题包含两部分：
 
@@ -34,13 +40,6 @@ Puppeteer是Google开发的Node.js库，可以通过DevTools协议控制无头Ch
 **第二步是React组件渲染**。使用`ReactDOM.render`把导出内容渲染到隐藏容器中，这样可以支持完整的React功能，包括Hooks、Context、状态管理等。
 
 **第三步是html2canvas截图**。等待渲染完成后，用html2canvas对隐藏容器进行截图，然后下载图片。
-
-这里需要特别说明的是，html2canvas并不是真正的屏幕截图，而是**模拟浏览器渲染过程**，将DOM转换为Canvas。它的工作流程是：
-
-1. **遍历DOM树** - 递归遍历目标元素，收集所有节点信息
-2. **计算样式** - 通过`getComputedStyle`获取每个节点的计算样式
-3. **构建渲染队列** - 根据层级关系（z-index、position）构建绘制队列
-4. **Canvas绘制** - 使用Canvas API（fillRect、fillText、drawImage）进行绘制
 
 所以，即使元素在视口外，只要它在DOM中且样式完整，html2canvas就能正确渲染。这就是隐藏DOM方案的理论基础。
 
@@ -119,8 +118,7 @@ const handleExport = async () => {
 ### 难点1：如何精确判断渲染完成时机？
 
 上面代码里的`renderHiddenAndWaitCommitted`是关键函数。React的渲染是异步的，`render`之后立刻截图，很容易截到"还没commit完成"的中间态。
-
-我不采用`setTimeout`或`MutationObserver`这种偏经验的等待方式，而是用**React官方提供的commit信号**来判断渲染完成。
+用**React官方提供的commit信号**来判断渲染完成。
 
 具体做法是：在导出内容外层包一层Gate组件，在它的`useLayoutEffect`里发出ready信号。`useLayoutEffect`的语义是：**DOM已经被React写入（commit），并且在浏览器绘制之前执行**，这是我们能拿到的最确定时机。
 
