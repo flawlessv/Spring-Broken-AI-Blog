@@ -1,7 +1,6 @@
 ---
 title: JavaScript深入之执行上下文完全指南
-description: JavaScript深入系列，深入讲解执行上下文的完整机制，包括执行上下文栈、变量对象、活动对象，以及它们在函数执行过程中的具体变化。
-created: 2024-01-01T00:00:00 (UTC +08:00)
+publishedAt: 2024-11-02
 tags: [JavaScript]
 category: 前端
 slug: jsshangxaiwen

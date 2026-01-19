@@ -1,7 +1,6 @@
 ---
 title: JavaScript深入之作用域完全指南
-description: JavaScript深入系列，深入讲解作用域的概念，包括词法作用域、动态作用域和作用域链，帮助你全面理解JavaScript的作用域机制。
-created: 2024-01-01T00:00:00 (UTC +08:00)
+publishedAt: 2024-11-08
 tags: [JavaScript]
 category: 前端
 slug: jszuoyongyu
@@ -69,8 +68,6 @@ function bar () {
 }
 bar
 ```
-
-这个文件也可以在[github博客仓库](https://github.com/mqyqingfeng/Blog/blob/master/demos/scope/scope.bash)中找到。
 
 ## 思考题
 
