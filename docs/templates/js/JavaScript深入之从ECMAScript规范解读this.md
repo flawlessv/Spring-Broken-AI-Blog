@@ -5,6 +5,7 @@ created: 2024-01-01T00:00:00 (UTC +08:00)
 tags: [JavaScript]
 category: 前端
 slug: jsthis
+published: true
 coverImage: https://pic1.imgdb.cn/item/696c6b3dcc965d6157f6b771.jpg
 ---
 

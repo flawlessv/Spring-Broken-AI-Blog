@@ -4,6 +4,7 @@ description: JavaScript深入系列第八篇，介绍理论上的闭包和实践
 created: 2024-01-01T00:00:00 (UTC +08:00)
 tags: [JavaScript]
 slug: jsbibao
+published: true
 category: 前端
 coverImage: https://pic1.imgdb.cn/item/696c6b3dcc965d6157f6b770.jpg
 ---

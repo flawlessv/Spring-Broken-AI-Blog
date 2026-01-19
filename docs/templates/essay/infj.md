@@ -2,6 +2,7 @@
 title: 用心写一次INFJ
 slug: writing-about-infj
 date: 2024-12-25
+published: false
 category: 随笔
 coverImage: https://pic1.imgdb.cn/item/696c6c39cc965d6157f6ba4c.jpg
 ---
