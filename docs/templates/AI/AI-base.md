@@ -5,7 +5,7 @@ featured: true
 readingTime: 12
 category: ai
 slug: aibase
-publishedAt: 2025-01-01
+publishedAt: 2025-11-01
 tags:
   - Prompt
   - Agent

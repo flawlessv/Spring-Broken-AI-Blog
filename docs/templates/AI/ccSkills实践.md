@@ -3,7 +3,7 @@ title: Claude Code Skills实践
 slug: claude-code-skills-guide
 published: true
 category: ai
-publishedAt: 2026-01-17
+publishedAt: 2026-01-05
 readingTime: 10
 coverImage: https://pic1.imgdb.cn/item/696c6c3dcc965d6157f6ba56.jpg
 ---
