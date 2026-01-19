@@ -8,7 +8,6 @@ category: ai
 publishedAt: 2025-01-19
 readingTime: 10
 coverImage: https://pic1.imgdb.cn/item/696c6c3ecc965d6157f6ba5a.jpg
-tags: [AI, VibeCoding, 编程效率, 上下文管理]
 ---
 
 这段时间深度使用 Claude Code 和 Cursor 后,我总结了几个提升 AI 辅助编程效率的关键点。这些经验可能不够系统,但都是实战中摸爬滚打出来的,希望对你有所帮助。
