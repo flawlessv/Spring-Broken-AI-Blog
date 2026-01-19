@@ -151,18 +151,20 @@ export default function PostsPage() {
           }
         }
 
+        // 显示结果
         toast({
           title: "导入完成",
-          description,
-          variant: "default",
+          description: result.message,
         });
 
-        // 显示详细结果
+        // 如果有跳过的文件，显示详细信息
         if (result.results.errors.length > 0) {
-          const errorMsg = result.results.errors.slice(0, 3).join("\n");
+          // 只显示前 5 个错误
+          const errorPreview = result.results.errors.slice(0, 5).join("\n");
+
           toast({
-            title: "部分文件导入失败",
-            description: `错误信息:\n${errorMsg}${result.results.errors.length > 3 ? "\n..." : ""}`,
+            title: `跳过了 ${result.results.skipped} 个文件`,
+            description: `${errorPreview}${result.results.errors.length > 5 ? `\n...还有 ${result.results.errors.length - 5} 个` : ""}`,
             variant: "destructive",
           });
         }
