@@ -1,7 +1,6 @@
 ---
 title: JavaScript深入之从原型到原型链
-description: JavaScript深入系列的第一篇，从原型与原型链开始讲起，如果你想知道构造函数的实例的原型，原型的原型，原型的原型的原型是什么，就来看看这篇文章吧。
-created: 2024-01-01T00:00:00 (UTC +08:00)
+publishedAt: 2024-11-01
 tags: [JavaScript]
 category: 前端
 published: true

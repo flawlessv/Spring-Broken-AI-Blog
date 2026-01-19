@@ -1,7 +1,6 @@
 ---
 title: JavaScript深入之闭包
-description: JavaScript深入系列第八篇，介绍理论上的闭包和实践上的闭包，以及从作用域链的角度解析经典的闭包题。
-created: 2024-01-01T00:00:00 (UTC +08:00)
+publishedAt: 2024-11-03
 tags: [JavaScript]
 slug: jsbibao
 published: true
@@ -11,7 +10,7 @@ coverImage: https://pic1.imgdb.cn/item/696c6b3dcc965d6157f6b770.jpg
 
 # JavaScript深入之闭包
 
-闭包是 JavaScript 中最核心也最容易混淆的概念之一。面试中必问，实际开发中经常用到，但很多人只是会用，不理解原理。今天我想从理论和实践两个角度，帮你彻底搞懂闭包。
+闭包是 JavaScript 中最核心也最容易混淆的概念之一。实际开发中经常用到，但很多人只是会用，不理解原理。今天我想从理论和实践两个角度，帮你彻底搞懂闭包。
 
 ## 定义
 
@@ -80,7 +79,7 @@ foo();
 
 首先我们要分析一下这段代码中执行上下文栈和执行上下文的变化情况。
 
-另一个与这段代码相似的例子，在[《JavaScript深入之执行上下文》](https://github.com/mqyqingfeng/Blog/issues/8)中有着非常详细的分析。如果看不懂以下的执行过程，建议先阅读这篇文章。
+另一个与这段代码相似的例子，在《JavaScript深入之执行上下文》中有着非常详细的分析。如果看不懂以下的执行过程，建议先阅读这篇文章。
 
 这里直接给出简要的执行过程：
 
@@ -97,7 +96,7 @@ foo();
 
 当 f 函数执行的时候，checkscope 函数上下文已经被销毁了啊(即从执行上下文栈中被弹出)，怎么还会读取到 checkscope 作用域下的 scope 值呢？
 
-以上的代码，要是转换成 PHP，就会报错，因为在 PHP 中，f 函数只能读取到自己作用域和全局作用域里的值，所以读不到 checkscope 下的 scope 值。(这段我问的PHP同事……)
+以上的代码，要是转换成 PHP，就会报错，因为在 PHP 中，f 函数只能读取到自己作用域和全局作用域里的值，所以读不到 checkscope 下的 scope 值。
 
 然而 JavaScript 却是可以的！
 
@@ -221,3 +220,259 @@ data[0]Context = {
 data[0]Context 的 AO 并没有 i 值，所以会沿着作用域链从匿名函数 Context.AO 中查找，这时候就会找 i 为 0，找到了就不会往 globalContext.VO 中查找了，即使 globalContext.VO 也有 i 的值(值为3)，所以打印的结果就是 0。
 
 data[1] 和 data[2] 是一样的道理。
+
+## 闭包的应用
+
+理解闭包的原理之后，让我们看看在实际开发中闭包有哪些典型应用。
+
+### 模拟私有变量
+
+JavaScript 在 ES6 的 class 之前没有真正的私有变量概念，但我们可以通过闭包实现类似效果：
+
+```js
+function createPerson(name) {
+  var _name = name; // 约定俗成，下划线开头表示"私有"
+
+  return {
+    getName: function () {
+      return _name;
+    },
+    setName: function (newName) {
+      _name = newName;
+    },
+  };
+}
+
+var person = createPerson("张三");
+console.log(person.getName()); // "张三"
+person.setName("李四");
+console.log(person.getName()); // "李四"
+console.log(person._name); // undefined，无法直接访问
+```
+
+这种方式创建的 `_name` 变量只能通过暴露的方法访问，外部无法直接修改，实现了数据的封装。
+
+### 柯里化（Currying）
+
+闭包是实现柯里化的基础。柯里化是把接受多个参数的函数变换成接受一个单一参数的函数：
+
+> 函数防抖与节流也是用的闭包
+
+```js
+function add(a) {
+  return function (b) {
+    return a + b;
+  };
+}
+
+var add5 = add(5);
+console.log(add5(3)); // 8
+console.log(add5(10)); // 15
+```
+
+一个更实用的例子是创建配置好的函数：
+
+```js
+function makeAjax(url) {
+  return function (data) {
+    // 实际项目中这里是真实的 ajax 请求
+    console.log("发送请求到 " + url);
+    console.log("数据：" + JSON.stringify(data));
+  };
+}
+
+var getUser = makeAjax("/api/user");
+var getOrder = makeAjax("/api/order");
+
+getUser({ id: 1 });
+getOrder({ orderId: 100 });
+```
+
+### 命名空间与模块化
+
+在 ES6 模块出现之前，常用闭包来实现模块化，避免全局变量污染：
+
+```js
+var myModule = (function () {
+  var privateVar = "这是私有变量";
+
+  function privateFunc() {
+    console.log("这是私有函数");
+  }
+
+  return {
+    publicVar: "这是公共变量",
+    publicFunc: function () {
+      console.log(privateVar);
+      privateFunc();
+    },
+  };
+})();
+
+console.log(myModule.publicVar); // "这是公共变量"
+myModule.publicFunc(); // 可以访问
+// myModule.privateVar; // undefined
+// myModule.privateFunc(); // 报错
+```
+
+### 偏函数
+
+偏函数是指固定一个函数的一些参数，然后产生一个更小元的函数：
+
+```js
+// 通用绑定函数
+function bind(fn, context) {
+  return function () {
+    return fn.apply(context, arguments);
+  };
+}
+
+var obj = {
+  name: "张三",
+  getName: function () {
+    return this.name;
+  },
+};
+
+var boundGetName = bind(obj.getName, obj);
+console.log(boundGetName()); // "张三"
+```
+
+### 缓存计算结果
+
+通过闭包可以实现简单的缓存机制：
+
+```js
+function createCache() {
+  var cache = {};
+
+  return {
+    get: function (key) {
+      return cache[key];
+    },
+    set: function (key, value) {
+      cache[key] = value;
+    },
+    has: function (key) {
+      return key in cache;
+    },
+  };
+}
+
+var memo = createCache();
+
+function fibonacci(n) {
+  if (n <= 1) return n;
+
+  if (memo.has(n)) {
+    return memo.get(n);
+  }
+
+  var result = fibonacci(n - 1) + fibonacci(n - 2);
+  memo.set(n, result);
+  return result;
+}
+```
+
+### 单例模式
+
+闭包可以用来实现单例模式：
+
+```js
+function createSingleton() {
+  var instance;
+
+  function init() {
+    var privateVar = 0;
+
+    function privateMethod() {
+      privateVar++;
+      console.log(privateVar);
+    }
+
+    return {
+      publicMethod: privateMethod,
+    };
+  }
+
+  return {
+    getInstance: function () {
+      if (!instance) {
+        instance = init();
+      }
+      return instance;
+    },
+  };
+}
+
+var singleton = createSingleton();
+
+var instance1 = singleton.getInstance();
+var instance2 = singleton.getInstance();
+
+console.log(instance1 === instance2); // true
+```
+
+## 注意事项
+
+虽然闭包很强大，但也有一些需要注意的地方：
+
+### 内存问题
+
+闭包会引用父函数的变量，导致这些变量无法被垃圾回收：
+
+```js
+function createElements() {
+  var arr = [];
+
+  for (var i = 0; i < 1000; i++) {
+    arr[i] = function () {
+      console.log(i);
+    };
+  }
+
+  return arr;
+}
+
+var elements = createElements();
+// 即使只用到了 elements[0]，但其他 999 个函数的闭包也都会保留在内存中
+```
+
+解决方案是用完就置空：
+
+```js
+elements = null; // 解除引用
+```
+
+### 性能考虑
+
+闭包涉及跨作用域访问，比直接访问局部变量要慢：
+
+```js
+// 更快的做法
+function process(list) {
+  var len = list.length; // 缓存到局部变量
+  for (var i = 0; i < len; i++) {
+    // 使用 list
+  }
+}
+```
+
+## 总结
+
+闭包是 JavaScript 中最重要的概念之一：
+
+1. **理论上**：所有函数都是闭包，因为它们都能访问自由变量
+2. **实践上**：当函数可以记住并访问所在的词法作用域，即使函数是在当前词法作用域之外执行，就产生了闭包
+
+闭包的应用非常广泛：
+
+- 数据封装和私有变量
+- 柯里化和偏函数
+- 防抖和节流
+- 模块化
+- 缓存和单例模式
+
+理解闭包需要结合执行上下文、作用域链、变量对象等知识，建议结合《JavaScript深入之执行上下文》和《JavaScript深入之作用域》这两篇文章一起阅读。
+
+闭包既是 JavaScript 的难点，也是精妙之处。掌握闭包，才能算是真正理解了 JavaScript。
