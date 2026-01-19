@@ -4,6 +4,7 @@ description: JavaScript深入系列，深入讲解作用域的概念，包括词
 created: 2024-01-01T00:00:00 (UTC +08:00)
 tags: [JavaScript]
 category: 前端
+slug: jszuoyongyu
 coverImage: https://pic1.imgdb.cn/item/696c6e52cc965d6157f6c039.jpg
 ---
 
