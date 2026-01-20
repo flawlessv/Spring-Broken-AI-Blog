@@ -1,10 +1,9 @@
 ---
 title: React Diff 算法完全指南
 slug: react-diff-algorithm
-
 published: true
 featured: false
-category: react
+category: 前端
 publishedAt: 2025-01-20
 readingTime: 20
 coverImage: https://pic1.imgdb.cn/item/696f735ab931ecccdc5b5968.jpg
@@ -154,7 +153,7 @@ React通过**三大策略**完成了优化：
 
 #### 情形一：相同节点位置，如何移动
 
-![图片](/public/images/posts/diff/img1.png)
+![图片](/images/posts/diff/img1.png)
 
 顺序：
 
@@ -167,7 +166,7 @@ React通过**三大策略**完成了优化：
 
 #### 情形二：有新的节点加入，删除节点
 
-![图片](/public/images/posts/diff/img2.png)
+![图片](/images/posts/diff/img2.png)
 
 顺序：
 
@@ -178,7 +177,7 @@ React通过**三大策略**完成了优化：
 
 #### 存在的问题
 
-![图片](/public/images/posts/diff/img3.png)
+![图片](/images/posts/diff/img3.png)
 
 我们来看看这种情况，如果将`D`移入到第一个，我们发现`lastIndex`为 3，之后在进行比较，发现`lastIndex`都大于`index`，所以剩下的节点都会移动，所以在开发的过程中应该尽量减少节点移入首部的操作，会影响其性能
 
@@ -188,7 +187,7 @@ React通过**三大策略**完成了优化：
 
 ### 为什么不能用index做为key值 ？
 
-![图片](/public/images/posts/diff/img4.png)
+![图片](/images/posts/diff/img4.png)
 
 我们发现，当我们判断第一个`B`时，由于此时的`key`为0在旧的中`key`为0是`A`，`B`和`A`明显不是一个组件，所以会删除重建
 

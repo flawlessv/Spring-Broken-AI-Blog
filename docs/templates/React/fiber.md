@@ -1,10 +1,9 @@
 ---
 title: React Fiber 架构完全解析
 slug: react-fiber-architecture
-
 published: true
 featured: false
-category: react
+category: 前端
 publishedAt: 2025-01-20
 readingTime: 15
 coverImage: https://pic1.imgdb.cn/item/696f735ab931ecccdc5b5967.jpg
@@ -31,8 +30,8 @@ Fiber 架构的核心是将原先的组件树转换为一个链表结构。
 **React 15 及之前**：组件树以递归方式处理，从根节点递归遍历整个树，一次性完成所有组件的渲染任务。
 
 **React 16 Fiber**：将每个节点（组件或元素）转化为 Fiber 节点，通过链表结构连接起来。Fiber 节点本质上是一个 JavaScript 对象，保存了组件的状态、类型、子节点，以及对父节点、兄弟节点的引用。
-![React 16 架构三层](/public/images/posts/fiber/img1.png)
-![Fiber 链表结构](/public/images/posts/fiber/img2.png)
+![React 16 架构三层](/images/posts/fiber/img1.png)
+![Fiber 链表结构](/images/posts/fiber/img2.png)
 
 ### 为什么需要链表
 
@@ -48,7 +47,7 @@ Fiber 架构的核心是将原先的组件树转换为一个链表结构。
 
 JavaScript 是单线程语言，代码按顺序执行。React 15 在渲染大组件时，需要递归计算所有子组件，当计算时间超过 16ms（一帧的时间）就会产生卡顿。
 
-![单线程阻塞示意图](/public/images/posts/fiber/img3.png)
+![单线程阻塞示意图](/images/posts/fiber/img3.png)
 
 解决办法是将耗时长的任务分成很多小任务，按优先级顺序执行：
 
@@ -60,7 +59,7 @@ JavaScript 是单线程语言，代码按顺序执行。React 15 在渲染大组
 
 如此反复，就能让用户感觉运行流畅。这个技术称为**时间分片**。
 
-![时间分片示意图](/public/images/posts/fiber/img4.png)
+![时间分片示意图](/images/posts/fiber/img4.png)
 
 ### 为什么不用 requestIdleCallback
 
@@ -163,7 +162,7 @@ export default class App extends React.Component {
 }
 ```
 
-![React 16 更新流程](/public/images/posts/fiber/img5.png)
+![React 16 更新流程](/images/posts/fiber/img5.png)
 
 图中红框内的步骤（调度器和协调器的工作）随时可能被中断：
 

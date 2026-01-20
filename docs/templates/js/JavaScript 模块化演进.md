@@ -1,10 +1,9 @@
 ---
 title: JavaScript 模块化演进：从混乱到规范
 slug: js-module-evolution
-
 published: true
 featured: true
-category: javascript
+category: 前端
 publishedAt: 2024-01-15
 readingTime: 20
 coverImage: https://pic1.imgdb.cn/item/696c6b3dcc965d6157f6b76c.jpg
