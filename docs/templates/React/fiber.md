@@ -7,7 +7,7 @@ featured: false
 category: react
 publishedAt: 2025-01-20
 readingTime: 15
-coverImage: /public/images/posts/fiber/img1.png
+coverImage: https://pic1.imgdb.cn/item/696f735ab931ecccdc5b5967.jpg
 ---
 
 React 16 是一个重要的里程碑，它引入了全新的 Fiber 架构，解决了之前版本的性能瓶颈。这篇文章我会详细讲解 React 16 的三层架构设计、Fiber 的工作原理，以及它如何实现可中断的异步更新。
