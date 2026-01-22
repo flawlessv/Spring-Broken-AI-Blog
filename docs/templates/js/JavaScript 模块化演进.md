@@ -399,6 +399,88 @@ UMD (Universal Module Definition) 试图统一 CommonJS 和 AMD,让代码可以�
 - 难以维护
 - 打包体积大
 
+## CMD: 通用模块定义
+
+CMD (Common Module Definition) 是国内开发者提出的规范，最出名的实现是 SeaJS。它与 AMD 类似，但采用"就近依赖"策略。
+
+### 核心语法
+
+```javascript
+// 定义模块
+define(function (require, exports, module) {
+  // 依赖在需要时才加载
+  var math = require("./math");
+
+  exports.add = function (a, b) {
+    return math.add(a, b);
+  };
+});
+```
+
+### 主要特性
+
+**就近依赖** - 与 AMD 的"依赖前置"不同，CMD 在需要时才 `require`：
+
+```javascript
+define(function (require) {
+  // 代码可以写在这里
+
+  if (needsMath) {
+    var math = require("./math"); // 就近加载
+    math.add(1, 2);
+  }
+});
+```
+
+### 优点
+
+- 就近依赖更灵活
+- 代码逻辑清晰
+- 降低耦合度
+
+### 缺点
+
+- 需要额外加载器
+- 社区支持较少
+- 已逐渐被 ESM 取代
+
+## 模块化方案对比
+
+下面是五种主要模块化方案的完整对比：
+
+| 规范         | 加载方式 | 依赖处理       | 值传递   | 代表工具           | 适用场景   | 主要优点                     | 主要缺点                     |
+| ------------ | -------- | -------------- | -------- | ------------------ | ---------- | ---------------------------- | ---------------------------- |
+| **CommonJS** | 同步加载 | 运行时 require | 值拷贝   | Node.js            | 服务端开发 | 语法简单、Node.js 原生支持   | 同步不适合浏览器、无静态分析 |
+| **AMD**      | 异步加载 | 依赖前置       | 值引用   | RequireJS          | 浏览器开发 | 异步不阻塞、依赖清晰         | 语法冗长、需加载器           |
+| **CMD**      | 异步加载 | 就近依赖       | 值引用   | SeaJS              | 浏览器开发 | 就近依赖灵活、降低耦合       | 社区小、已逐渐被取代         |
+| **UMD**      | 环境判断 | 兼容 CJS/AMD   | 视环境   | jQuery、Lodash     | 跨平台库   | 跨环境兼容、一套代码         | 代码冗余、维护复杂           |
+| **ESM**      | 静态加载 | 编译时确定     | 实时绑定 | 现代浏览器/Node.js | 新项目开发 | 官方标准、Tree-shaking、简洁 | 需现代环境支持               |
+
+### 语法对比
+
+```javascript
+// CommonJS
+const module = require('./module');
+module.exports = value;
+
+// AMD
+define('module', ['dep1', 'dep2'], function(dep1, dep2) {});
+require(['module'], function(module) {});
+
+// CMD
+define(function(require, exports, module) {
+  const mod = require('./mod');
+});
+
+// UMD (环境判断，见前文示例)
+
+// ESM
+import { value } from './module';
+export const value = 1;
+export default value;
+import('./module').then(...);
+```
+
 ## ES Modules: 现代标准
 
 ES Modules (ESM) 是 JavaScript 官方的模块化方案,在 ES2015 (ES6) 中成为标准。它融合了 CommonJS 和 AMD 的优点,成为了最终的解决方案。
