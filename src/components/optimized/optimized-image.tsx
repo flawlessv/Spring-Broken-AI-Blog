@@ -152,65 +152,13 @@ export function OptimizedCover({
 export function OptimizedContentImage({
   src,
   alt,
-  width,
-  height,
   className,
-}: OptimizedImageProps) {
-  const [isLoading, setIsLoading] = useState(true);
-  const [isInView, setIsInView] = useState(false);
-  const imgRef = useRef<HTMLDivElement>(null);
-
-  // 使用 Intersection Observer 实现懒加载
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setIsInView(true);
-          observer.disconnect();
-        }
-      },
-      {
-        rootMargin: "50px", // 提前 50px 开始加载
-      }
-    );
-
-    if (imgRef.current) {
-      observer.observe(imgRef.current);
-    }
-
-    return () => observer.disconnect();
-  }, []);
-
+}: Pick<OptimizedImageProps, "src" | "alt" | "className">) {
   return (
-    <div
-      ref={imgRef}
-      className={cn(
-        "relative overflow-hidden bg-gray-100 dark:bg-gray-800",
-        className
-      )}
-    >
-      {isLoading && isInView && (
-        <div className="absolute inset-0 bg-gradient-to-br from-gray-200 via-gray-300 to-gray-200 animate-pulse" />
-      )}
-
-      {isInView && (
-        <Image
-          src={src}
-          alt={alt}
-          width={width}
-          height={height}
-          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 80vw, 1200px"
-          quality={85}
-          loading="lazy"
-          className={cn(
-            "object-cover transition-opacity duration-300",
-            isLoading ? "opacity-0" : "opacity-100"
-          )}
-          placeholder="blur"
-          blurDataURL={generateBlurPlaceholder(10, 10)}
-          onLoad={() => setIsLoading(false)}
-        />
-      )}
-    </div>
+    <img
+      src={src}
+      alt={alt}
+      className={cn("w-full h-full object-cover", className)}
+    />
   );
 }
