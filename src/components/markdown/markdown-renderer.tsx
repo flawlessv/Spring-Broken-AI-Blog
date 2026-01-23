@@ -23,10 +23,16 @@ import { useState, useEffect, useMemo } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeRaw from "rehype-raw";
-import { List, ChevronRight, ChevronDown, ChevronLeft } from "lucide-react";
+import { List, ChevronRight, ChevronDown, ChevronLeft, X } from "lucide-react";
 
 import Mermaid from "./mermaid";
 import CodeBlock from "./code-block";
+import {
+  Dialog,
+  DialogContent,
+  DialogOverlay,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 // 组件属性接口定义
 interface MarkdownRendererProps {
@@ -53,6 +59,7 @@ export default function MarkdownRenderer({
   const [tocOpen, setTocOpen] = useState(false); // 移动端目录是否展开
   const [desktopTocCollapsed, setDesktopTocCollapsed] = useState(false); // 桌面端目录是否折叠
   const [readingProgress, setReadingProgress] = useState(0); // 阅读进度
+  const [lightboxImage, setLightboxImage] = useState<string | null>(null); // 图片放大状态
 
   // 生成稳定的唯一 ID - 基于内容哈希，确保服务端和客户端一致
   const generateStableUniqueId = (text: string, index: number) => {
@@ -173,6 +180,37 @@ export default function MarkdownRenderer({
 
   return (
     <>
+      {/* 图片放大弹窗 */}
+      <Dialog
+        open={lightboxImage !== null}
+        onOpenChange={() => setLightboxImage(null)}
+      >
+        <DialogOverlay />
+        <DialogContent
+          className="max-w-[95vw] max-h-[95vh] p-0 bg-transparent border-none shadow-none"
+          onInteractOutside={(e) => e.preventDefault()}
+          onEscapeKeyDown={() => setLightboxImage(null)}
+        >
+          <DialogTitle className="sr-only">图片预览</DialogTitle>
+          <div className="relative flex items-center justify-center w-full h-full">
+            <button
+              onClick={() => setLightboxImage(null)}
+              className="absolute -top-12 right-0 p-2 text-white hover:text-gray-200 transition-colors"
+              aria-label="关闭"
+            >
+              <X className="w-6 h-6" />
+            </button>
+            {lightboxImage && (
+              <img
+                src={lightboxImage}
+                alt="放大图片"
+                className="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl"
+              />
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* 顶部阅读进度条 */}
       <div className="fixed top-0 left-0 w-full h-1 bg-gray-100 dark:bg-gray-800 z-50">
         <div
@@ -501,6 +539,16 @@ export default function MarkdownRenderer({
                       >
                         {children}
                       </blockquote>
+                    ),
+                    // 自定义图片样式 - 添加点击放大功能
+                    img: ({ src, alt, ...props }: any) => (
+                      <img
+                        src={src}
+                        alt={alt || ""}
+                        className="max-w-full mx-auto rounded-none border-[4px] border-black dark:border-white my-12 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] dark:shadow-[8px_8px_0px_0px_rgba(255,255,255,1)] cursor-pointer hover:opacity-90 transition-opacity"
+                        onClick={() => setLightboxImage(src)}
+                        {...props}
+                      />
                     ),
                   }}
                 >
