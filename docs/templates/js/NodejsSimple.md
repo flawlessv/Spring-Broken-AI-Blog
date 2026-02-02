@@ -51,4 +51,399 @@
 3.  核心特点：① 中间件执行顺序可控，先顺序执行前逻辑，再逆序执行后逻辑，形成闭环；② 支持中间件间的数据共享，可通过 ctx（上下文）对象，在多个中间件中传递数据、修改数据；③ 便于统一处理请求和响应，如在最外层中间件统一处理日志、跨域，在最内层中间件处理业务逻辑，实现职责分离；④ 基于 async/await，可完美处理异步逻辑，避免回调地狱，确保中间件执行顺序的一致性。
 
 4.  实际应用：在 Node.js 接入层开发中，洋葱模型的典型应用包括：日志记录（前逻辑记录请求入参，后逻辑记录响应结果）、权限校验（前逻辑校验权限，无权限直接拦截，不执行后续中间件）、统一响应封装（后逻辑统一包装接口返回格式）、异常捕获（外层中间件捕获内层中间件的异步异常）。
-    > （注：文档部分内容可能由 AI 生成）
+
+## 1. React 和 Vue 的相同点和不同点（JS实现核心特性对比）
+
+### 核心答案
+
+#### 相同点
+
+1. **数据驱动视图**：均基于MVVM思想（React为虚拟DOM+状态驱动，Vue为MVVM），通过数据变化自动更新视图，无需手动操作DOM；
+2. **组件化开发**：均支持组件化，将页面拆分为独立可复用的组件，降低耦合度；
+3. **虚拟DOM**：都使用虚拟DOM提升渲染性能，通过对比虚拟DOM差异更新真实DOM；
+4. **生命周期**：组件均有生命周期钩子，可在不同阶段执行逻辑（如初始化、挂载、更新、销毁）；
+5. **跨平台**：React可通过React Native开发原生应用，Vue可通过Vue Native/uni-app实现跨平台。
+
+#### 不同点
+
+| 维度       | React                                | Vue                                                       |
+| ---------- | ------------------------------------ | --------------------------------------------------------- |
+| 核心思想   | 函数式编程（推崇纯组件、单向数据流） | 渐进式框架（按需引入功能，更灵活）                        |
+| 模板语法   | JSX（将HTML融入JS）                  | 模板语法（HTML+指令，如v-if/v-for）                       |
+| 响应式原理 | 手动 setState 触发更新（不可变数据） | 基于Object.defineProperty（Vue2）/Proxy（Vue3）自动响应式 |
+| 状态管理   | 需配合Redux/MobX（外部库）           | 内置Vuex/Pinia（官方适配）                                |
+| 上手成本   | 较高（需理解JSX、函数式、hooks）     | 较低（模板语法接近原生HTML）                              |
+
+#### 核心特性JS实现示例（对比）
+
+**React 组件（函数式+JSX）**：
+
+```jsx
+import React, { useState } from "react";
+
+// React组件：数据驱动视图（需手动setState）
+function Counter() {
+  // 声明状态，不可直接修改count，需通过setCount
+  const [count, setCount] = useState(0);
+
+  return (
+    <div>
+      <p>计数：{count}</p>
+      {/* 点击更新状态，触发视图重渲染 */}
+      <button onClick={() => setCount(count + 1)}>加1</button>
+    </div>
+  );
+}
+```
+
+**Vue 组件（模板语法+自动响应式）**：
+
+```vue
+<template>
+  <!-- Vue模板语法 -->
+  <div>
+    <p>计数：{{ count }}</p>
+    <button @click="count++">加1</button>
+  </div>
+</template>
+
+<script>
+export default {
+  // Vue自动响应式数据
+  data() {
+    return {
+      count: 0, // 可直接修改，自动触发视图更新
+    };
+  },
+};
+</script>
+```
+
+## 2. 302 怎么确定重定向路径？
+
+### 核心答案
+
+302 是HTTP临时重定向状态码，客户端（浏览器/Node.js）通过**响应头中的 Location 字段**确定重定向路径，完整流程和关键细节如下：
+
+#### （1）核心逻辑
+
+1. 客户端发送请求到服务器，服务器返回302状态码，并在响应头中携带 `Location: 目标路径`；
+2. 客户端解析响应头的Location字段，自动向该路径发起新请求；
+3. 若Location是**绝对路径**（如`https://xxx.com/api`），直接请求该地址；若为**相对路径**（如`/api`），则拼接原请求的域名/端口形成完整路径。
+
+#### （2）Node.js中获取/设置302重定向路径示例
+
+```javascript
+// Koa框架中设置302重定向（服务器端）
+const Koa = require("koa");
+const app = new Koa();
+
+app.use(async (ctx) => {
+  if (ctx.path === "/old-path") {
+    // 设置302状态码 + Location重定向路径
+    ctx.status = 302;
+    // 绝对路径
+    ctx.set("Location", "https://xxx.com/new-path");
+    // 相对路径（拼接原域名：如原请求是http://localhost:3000/old-path → http://localhost:3000/new-path）
+    // ctx.set('Location', '/new-path');
+  }
+});
+
+app.listen(3000);
+
+// Node.js客户端请求302接口，获取重定向路径
+const axios = require("axios");
+axios
+  .get("http://localhost:3000/old-path", {
+    maxRedirects: 0, // 禁止自动重定向，便于获取Location
+    validateStatus: (status) => status === 302, // 允许302状态码
+  })
+  .then((res) => {
+    // 获取重定向路径
+    const redirectPath = res.headers.location;
+    console.log("重定向路径：", redirectPath); // 输出：https://xxx.com/new-path
+  });
+```
+
+#### （3）关键注意点
+
+- Location字段是302重定向的**唯一依据**，无该字段则客户端不会重定向；
+- 302是临时重定向，浏览器不会缓存重定向路径；301（永久重定向）会缓存，需注意区分；
+- 跨域场景下，若重定向路径跨域，客户端需确保该路径允许跨域（CORS配置）。
+
+## 3. Promise(A).catch(f1).then(f2)，f1执行后f2会执行吗？为什么？
+
+### 核心答案
+
+**会执行**，核心原因是Promise的链式调用特性：`catch` 本身会返回一个新的resolved状态的Promise（除非f1内部抛出异常），因此后续的`then`会被触发。
+
+#### （1）完整逻辑
+
+1. Promise(A)若rejected，执行f1（catch回调）；
+2. f1执行完成后，catch返回一个**状态为resolved、值为f1返回值**的新Promise；
+3. 新Promise触发后续的then回调（f2）；
+4. 仅当f1内部抛出异常（如`throw new Error()`），catch返回的Promise状态为rejected，f2才不会执行（需额外catch捕获）。
+
+#### （2）代码验证
+
+```javascript
+// 示例1：f1执行后f2执行
+Promise.reject("出错了")
+  .catch((err) => {
+    console.log("f1执行：", err); // 输出：f1执行：出错了
+    return "f1返回值"; // catch返回resolved状态的Promise
+  })
+  .then((res) => {
+    console.log("f2执行：", res); // 输出：f2执行：f1返回值
+  });
+
+// 示例2：f1抛异常，f2不执行
+Promise.reject("出错了")
+  .catch((err) => {
+    console.log("f1执行：", err); // 输出：f1执行：出错了
+    throw new Error("f1内部出错"); // catch返回rejected状态的Promise
+  })
+  .then((res) => {
+    console.log("f2执行：", res); // 不执行
+  })
+  .catch((err) => {
+    console.log("捕获f1异常：", err.message); // 输出：捕获f1异常：f1内部出错
+  });
+```
+
+#### （3）核心总结
+
+Promise链式调用中，`catch` 是`then(null, f1)`的语法糖，其返回值决定后续then是否执行：
+
+- f1正常执行（无抛错）→ catch返回resolved → f2执行；
+- f1抛错 → catch返回rejected → f2不执行（需后续catch捕获）。
+
+## 4. JS对象数组转树形结构（coding题）
+
+### 核心需求
+
+将扁平的对象数组（含id、parentId字段）转为树形结构（子节点嵌套在children数组中）。
+
+#### （1）完整实现代码
+
+```javascript
+/**
+ * 扁平数组转树形结构
+ * @param {Array} list - 扁平对象数组（含id、parentId字段）
+ * @param {String|Number} rootId - 根节点的parentId（通常为0/null/''）
+ * @returns {Array} 树形结构数组
+ */
+function arrayToTree(list, rootId = 0) {
+  // 1. 创建id到节点的映射表，方便快速查找父节点
+  const nodeMap = new Map();
+  // 2. 初始化结果数组（存储根节点）
+  const tree = [];
+
+  // 第一步：遍历数组，构建映射表，初始化children
+  for (const node of list) {
+    nodeMap.set(node.id, { ...node, children: [] });
+  }
+
+  // 第二步：遍历数组，将子节点挂载到父节点的children中
+  for (const node of list) {
+    const currentNode = nodeMap.get(node.id);
+    // 根节点直接加入结果
+    if (node.parentId === rootId) {
+      tree.push(currentNode);
+    } else {
+      // 非根节点，找到父节点并挂载
+      const parentNode = nodeMap.get(node.parentId);
+      if (parentNode) {
+        parentNode.children.push(currentNode);
+      }
+    }
+  }
+
+  return tree;
+}
+
+// 测试用例
+const flatList = [
+  { id: 1, name: "一级节点1", parentId: 0 },
+  { id: 2, name: "一级节点2", parentId: 0 },
+  { id: 3, name: "二级节点1", parentId: 1 },
+  { id: 4, name: "三级节点1", parentId: 3 },
+  { id: 5, name: "二级节点2", parentId: 2 },
+];
+
+// 转换调用
+const treeData = arrayToTree(flatList);
+console.log(JSON.stringify(treeData, null, 2));
+```
+
+#### （2）输出结果
+
+```json
+[
+  {
+    "id": 1,
+    "name": "一级节点1",
+    "parentId": 0,
+    "children": [
+      {
+        "id": 3,
+        "name": "二级节点1",
+        "parentId": 1,
+        "children": [
+          {
+            "id": 4,
+            "name": "三级节点1",
+            "parentId": 3,
+            "children": []
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": 2,
+    "name": "一级节点2",
+    "parentId": 0,
+    "children": [
+      {
+        "id": 5,
+        "name": "二级节点2",
+        "parentId": 2,
+        "children": []
+      }
+    ]
+  }
+]
+```
+
+#### （3）核心思路
+
+1. **映射表优化**：用Map存储id与节点的映射，将查找父节点的时间复杂度从O(n)降为O(1)；
+2. **两步遍历**：第一步初始化节点和映射表，第二步挂载子节点到父节点；
+3. **鲁棒性**：判断父节点是否存在，避免无效节点导致的报错。
+
+## 5. 比较两个版本号version1和version2（coding题）
+
+### 核心需求
+
+版本号格式为`x.y.z`（x、y、z为非负整数，可省略后续段，如1.0=1.0.0），比较规则：
+
+- version1 > version2 → 返回1；
+- version1 < version2 → 返回-1；
+- 相等 → 返回0。
+
+#### （1）完整实现代码
+
+```javascript
+/**
+ * 比较两个版本号
+ * @param {String} version1 - 版本号1
+ * @param {String} version2 - 版本号2
+ * @returns {Number} 1/-1/0
+ */
+function compareVersion(version1, version2) {
+  // 1. 分割版本号为数组，转为数字
+  const v1Arr = version1.split(".").map(Number);
+  const v2Arr = version2.split(".").map(Number);
+  // 2. 取最长长度，不足补0
+  const maxLen = Math.max(v1Arr.length, v2Arr.length);
+
+  for (let i = 0; i < maxLen; i++) {
+    // 不足的段补0（如1.0 → [1,0,0]，1 → [1,0,0]）
+    const v1 = i < v1Arr.length ? v1Arr[i] : 0;
+    const v2 = i < v2Arr.length ? v2Arr[i] : 0;
+
+    if (v1 > v2) return 1;
+    if (v1 < v2) return -1;
+  }
+
+  // 所有段相等
+  return 0;
+}
+
+// 测试用例
+console.log(compareVersion("1.0.1", "1.0.0")); // 1
+console.log(compareVersion("1.0", "1.0.0")); // 0
+console.log(compareVersion("0.1", "1.1")); // -1
+console.log(compareVersion("1.1.0", "1.0.9")); // 1
+console.log(compareVersion("1.2", "1.10")); // -1
+```
+
+#### （2）核心思路
+
+1. **分割与类型转换**：将版本号按`.`分割为数组，转为数字（避免字符串比较如'10'<'2'的问题）；
+2. **补0对齐**：对长度不足的版本段补0，确保每一位都能比较；
+3. **逐位比较**：从左到右逐位对比，一旦出现差异立即返回结果，全部相等则返回0。
+
+## 6. 给定一个区间集合，合并所有重叠的区间（coding题）
+
+### 核心需求
+
+输入区间数组（如`[[1,3],[2,6],[8,10],[15,18]]`），合并重叠/相邻区间，输出`[[1,6],[8,10],[15,18]]`。
+
+#### （1）完整实现代码
+
+```javascript
+/**
+ * 合并重叠区间
+ * @param {Array<Array<Number>>} intervals - 区间数组
+ * @returns {Array<Array<Number>>} 合并后的区间数组
+ */
+function mergeIntervals(intervals) {
+  // 边界处理：空数组直接返回
+  if (intervals.length === 0) return [];
+
+  // 1. 按区间左端点升序排序（核心前提）
+  intervals.sort((a, b) => a[0] - b[0]);
+
+  // 2. 初始化结果数组，放入第一个区间
+  const merged = [intervals[0]];
+
+  // 3. 遍历剩余区间，判断是否重叠
+  for (let i = 1; i < intervals.length; i++) {
+    const last = merged[merged.length - 1]; // 结果中最后一个区间
+    const current = intervals[i];
+
+    // 重叠：合并区间（更新右端点为最大值）
+    if (current[0] <= last[1]) {
+      last[1] = Math.max(last[1], current[1]);
+    } else {
+      // 不重叠：加入结果数组
+      merged.push(current);
+    }
+  }
+
+  return merged;
+}
+
+// 测试用例
+const intervals = [
+  [1, 3],
+  [2, 6],
+  [8, 10],
+  [15, 18],
+];
+console.log(mergeIntervals(intervals)); // [[1,6],[8,10],[15,18]]
+
+const intervals2 = [
+  [1, 4],
+  [4, 5],
+];
+console.log(mergeIntervals(intervals2)); // [[1,5]]
+```
+
+#### （2）核心思路
+
+1. **排序是前提**：先按区间左端点升序排序，确保后续只需对比当前区间与结果最后一个区间；
+2. **重叠判断**：当前区间左端点 ≤ 结果最后一个区间的右端点 → 重叠，合并右端点为两者最大值；
+3. **边界处理**：空数组直接返回，单个区间无需合并。
+
+### 总结
+
+1. **React/Vue核心差异**：React侧重函数式、JSX、手动状态更新；Vue侧重渐进式、模板语法、自动响应式；
+2. **Promise链式调用**：catch执行后f2默认执行（除非f1抛错），因catch返回resolved状态的Promise；
+3. **编码题核心思路**：
+   - 数组转树形：用Map构建映射表，两步遍历挂载子节点；
+   - 版本号比较：分割补0后逐位对比；
+   - 区间合并：先排序，再遍历合并重叠区间；
+4. **302重定向**：核心依据是响应头Location字段，绝对/相对路径均需拼接为完整地址。
