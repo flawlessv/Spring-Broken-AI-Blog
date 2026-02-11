@@ -32,6 +32,7 @@ interface Message {
 
 interface Source {
   postId: string;
+  slug: string;
   title: string;
   excerpt: string;
   score: number;
@@ -474,7 +475,7 @@ export default function RAGChat({ trigger }: RAGChatProps) {
                                 .map((source, idx) => (
                                   <a
                                     key={idx}
-                                    href={`/posts/${source.postId}`}
+                                    href={`/posts/${source.slug}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-background border rounded hover:bg-accent transition-colors"

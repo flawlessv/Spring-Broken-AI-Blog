@@ -213,6 +213,7 @@ async function getFallbackRelatedPosts(
       excerpt: true,
       coverImage: true,
       createdAt: true,
+      categoryId: true,
       category: { select: { name: true, slug: true } },
       tags: { include: { tag: true } },
     },
@@ -225,7 +226,7 @@ async function getFallbackRelatedPosts(
     const postTagIds = new Set(post.tags.map((t) => t.tag.id));
     const commonTags = tagIds.filter((id) => postTagIds.has(id)).length;
     const sameCategory =
-      post.category && currentPost.categoryId === post.category.slug ? 1 : 0;
+      post.categoryId && currentPost.categoryId === post.categoryId ? 1 : 0;
 
     return {
       id: post.id,

@@ -39,9 +39,13 @@ class ChromaVectorStore implements VectorStore {
   private initialized = false;
 
   constructor() {
-    // Chroma 3.x 使用 host 和 port 参数
-    const host = process.env.CHROMA_HOST || "localhost";
-    const port = parseInt(process.env.CHROMA_PORT || "8000", 10);
+    // 兼容两套环境变量命名：CHROMADB_*（文档）和 CHROMA_*（历史）
+    const host =
+      process.env.CHROMADB_HOST || process.env.CHROMA_HOST || "localhost";
+    const port = parseInt(
+      process.env.CHROMADB_PORT || process.env.CHROMA_PORT || "8000",
+      10
+    );
     this.client = new ChromaClient({ host, port });
   }
 
