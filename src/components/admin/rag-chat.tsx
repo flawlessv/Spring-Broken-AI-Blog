@@ -1,6 +1,8 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { Component, ReactNode, useEffect, useRef, useState } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -20,6 +22,7 @@ import {
   RefreshCw,
   Database,
 } from "lucide-react";
+import CodeBlock from "@/components/markdown/code-block";
 
 interface Message {
   id: string;
@@ -48,6 +51,111 @@ interface IndexStatus {
   indexed: number;
   total: number;
   lastIndexed?: string;
+}
+
+interface MarkdownErrorBoundaryProps {
+  fallback: ReactNode;
+  children: ReactNode;
+}
+
+interface MarkdownErrorBoundaryState {
+  hasError: boolean;
+}
+
+class MarkdownErrorBoundary extends Component<
+  MarkdownErrorBoundaryProps,
+  MarkdownErrorBoundaryState
+> {
+  state: MarkdownErrorBoundaryState = { hasError: false };
+
+  static getDerivedStateFromError(): MarkdownErrorBoundaryState {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: Error) {
+    console.warn("Markdown 渲染异常，降级为纯文本:", error);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return this.props.fallback;
+    }
+    return this.props.children;
+  }
+}
+
+function normalizeAssistantMarkdown(rawContent: string): string {
+  const normalized = rawContent.replace(/\r\n?/g, "\n");
+
+  // 流式场景下代码块可能被截断，临时补闭合以保证渲染稳定
+  const fenceMatches = normalized.match(/```/g) || [];
+  const hasUnclosedFence = fenceMatches.length % 2 === 1;
+  const withClosedFence = hasUnclosedFence
+    ? `${normalized}\n\`\`\``
+    : normalized;
+
+  // 如果模型误输出了 HTML 标签，转义为纯文本显示，避免注入和样式污染
+  const hasHtmlTag = /<\/?[a-z][^>]*>/i.test(withClosedFence);
+  if (!hasHtmlTag) {
+    return withClosedFence;
+  }
+
+  return withClosedFence.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+function renderAssistantContent(content: string) {
+  const normalizedContent = normalizeAssistantMarkdown(content);
+
+  return (
+    <MarkdownErrorBoundary
+      fallback={
+        <p className="text-sm whitespace-pre-wrap leading-relaxed">{content}</p>
+      }
+    >
+      <div className="prose prose-sm dark:prose-invert max-w-none prose-p:my-2 prose-ul:my-2 prose-ol:my-2 prose-pre:my-3 prose-code:before:content-none prose-code:after:content-none">
+        <ReactMarkdown
+          remarkPlugins={[remarkGfm]}
+          skipHtml
+          components={{
+            code: ({ className, children, ...props }: any) => {
+              const hasLanguageClass = /^language-/.test(className || "");
+              const code = String(children || "").replace(/\n$/, "");
+              const isInlineCode =
+                !hasLanguageClass &&
+                !code.includes("\n") &&
+                props.node?.parent?.tagName !== "pre";
+
+              if (isInlineCode) {
+                return (
+                  <code className="px-1.5 py-0.5 rounded bg-muted text-xs font-mono">
+                    {code}
+                  </code>
+                );
+              }
+
+              return (
+                <CodeBlock className={className || "language-text"}>
+                  {code}
+                </CodeBlock>
+              );
+            },
+            a: ({ children, ...props }) => (
+              <a
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline"
+                {...props}
+              >
+                {children}
+              </a>
+            ),
+          }}
+        >
+          {normalizedContent}
+        </ReactMarkdown>
+      </div>
+    </MarkdownErrorBoundary>
+  );
 }
 
 export default function RAGChat({ trigger }: RAGChatProps) {
@@ -276,10 +384,17 @@ export default function RAGChat({ trigger }: RAGChatProps) {
         if (dataLines.length === 0) return;
 
         let data: any;
+        const rawData = dataLines.join("\n");
         try {
-          data = JSON.parse(dataLines.join("\n"));
+          data = JSON.parse(rawData);
         } catch (e) {
-          console.warn("解析 SSE 数据失败:", e, dataLines.join("\n"));
+          // SSE 格式异常兜底：chunk 事件优先按纯文本消费，避免整段回答中断
+          if (eventType === "chunk" && rawData) {
+            pendingChunkText += rawData;
+            scheduleFlush();
+            return;
+          }
+          console.warn("解析 SSE 数据失败:", e, rawData);
           return;
         }
 
@@ -568,9 +683,7 @@ export default function RAGChat({ trigger }: RAGChatProps) {
                             <span>正在思考...</span>
                           </div>
                         ) : (
-                          <p className="text-sm whitespace-pre-wrap leading-relaxed">
-                            {message.content}
-                          </p>
+                          renderAssistantContent(message.content)
                         )}
                         {message.mode === "fallback" && (
                           <p className="text-xs text-amber-600 dark:text-amber-400 mt-2 flex items-center gap-1">
