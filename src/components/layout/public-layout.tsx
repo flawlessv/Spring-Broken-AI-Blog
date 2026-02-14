@@ -2,7 +2,7 @@
 
 import { ReactNode, useState, useEffect } from "react";
 import Link from "next/link";
-import { LayoutDashboard, Moon, Sun, Menu, X } from "lucide-react";
+import { LayoutDashboard, Menu, X } from "lucide-react";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { cn } from "@/lib/utils";
 
