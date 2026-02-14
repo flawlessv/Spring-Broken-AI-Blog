@@ -59,7 +59,10 @@ export default function RAGChat({ trigger }: RAGChatProps) {
   const [indexStatus, setIndexStatus] = useState<IndexStatus | null>(null);
   const [showIndexPanel, setShowIndexPanel] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const shouldAutoScrollRef = useRef(true);
 
   // 从 localStorage 加载对话历史
   useEffect(() => {
@@ -80,26 +83,43 @@ export default function RAGChat({ trigger }: RAGChatProps) {
     }
   }, []);
 
-  // 保存对话历史到 localStorage
+  // 保存对话历史到 localStorage（防抖，避免流式输出期间频繁写入）
   useEffect(() => {
     if (messages.length > 0) {
-      try {
-        // 只保留最近 50 条消息
-        const toSave = messages.slice(-50);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
-      } catch (e) {
-        console.error("保存对话历史失败:", e);
-      }
+      const timer = setTimeout(() => {
+        try {
+          // 只保留最近 50 条消息
+          const toSave = messages.slice(-50);
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
+        } catch (e) {
+          console.error("保存对话历史失败:", e);
+        }
+      }, 500);
+      return () => clearTimeout(timer);
     }
   }, [messages]);
 
   // 滚动到底部
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  const scrollToBottom = (behavior: ScrollBehavior = "smooth") => {
+    messagesEndRef.current?.scrollIntoView({ behavior });
+  };
+
+  const isNearBottom = () => {
+    const container = messagesContainerRef.current;
+    if (!container) return true;
+    const distanceToBottom =
+      container.scrollHeight - container.scrollTop - container.clientHeight;
+    return distanceToBottom < 120;
+  };
+
+  const handleMessagesScroll = () => {
+    shouldAutoScrollRef.current = isNearBottom();
   };
 
   useEffect(() => {
-    scrollToBottom();
+    if (shouldAutoScrollRef.current) {
+      scrollToBottom(isLoading ? "auto" : "smooth");
+    }
   }, [messages]);
 
   // 聚焦输入框
@@ -109,9 +129,36 @@ export default function RAGChat({ trigger }: RAGChatProps) {
     }
   }, [isOpen]);
 
+  // 弹窗关闭时中断流式请求
+  useEffect(() => {
+    if (!isOpen) {
+      abortControllerRef.current?.abort();
+    }
+  }, [isOpen]);
+
+  // 组件卸载时兜底清理
+  useEffect(() => {
+    return () => {
+      abortControllerRef.current?.abort();
+    };
+  }, []);
+
+  const updateAssistantMessage = (
+    assistantMessageId: string,
+    updater: (msg: Message) => Message
+  ) => {
+    setMessages((prev) =>
+      prev.map((msg) => (msg.id === assistantMessageId ? updater(msg) : msg))
+    );
+  };
+
   // 发送消息（流式）
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
+
+    abortControllerRef.current?.abort();
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
 
     // 生成唯一的消息 ID
     const userMessageId = `msg_${Date.now()}_user`;
@@ -127,6 +174,7 @@ export default function RAGChat({ trigger }: RAGChatProps) {
     setMessages((prev) => [...prev, userMessage]);
     setInput("");
     setIsLoading(true);
+    shouldAutoScrollRef.current = true;
 
     // 创建流式消息占位符
     const assistantMessage: Message = {
@@ -143,6 +191,7 @@ export default function RAGChat({ trigger }: RAGChatProps) {
       const response = await fetch("/api/ai/rag/stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
         body: JSON.stringify({
           question: userMessage.content,
         }),
@@ -161,97 +210,163 @@ export default function RAGChat({ trigger }: RAGChatProps) {
       }
 
       let buffer = "";
-      let mode: "rag" | "fallback" = "rag";
+      let pendingChunkText = "";
+      let scheduledFrame: number | null = null;
+      let forceFlushTimer: ReturnType<typeof setTimeout> | null = null;
+      let streamError: Error | null = null;
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
+      const flushPendingChunk = () => {
+        if (!pendingChunkText) return;
+        const textToAppend = pendingChunkText;
+        pendingChunkText = "";
 
-        buffer += decoder.decode(value, { stream: true });
+        updateAssistantMessage(assistantMessageId, (msg) => ({
+          ...msg,
+          content: msg.content + textToAppend,
+        }));
+      };
 
-        // SSE 格式：event: type\ndata: json\n\n
-        const chunks = buffer.split("\n\n");
-        buffer = chunks.pop() || ""; // 保留最后一个不完整的块
+      const clearFlushSchedulers = () => {
+        if (scheduledFrame !== null) {
+          cancelAnimationFrame(scheduledFrame);
+          scheduledFrame = null;
+        }
+        if (forceFlushTimer) {
+          clearTimeout(forceFlushTimer);
+          forceFlushTimer = null;
+        }
+      };
 
-        for (const chunk of chunks) {
-          if (!chunk.trim()) continue;
+      const scheduleFlush = () => {
+        if (scheduledFrame !== null) return;
 
-          let eventType = "";
-          let dataStr = "";
-
-          for (const line of chunk.split("\n")) {
-            if (line.startsWith("event: ")) {
-              eventType = line.slice(7).trim();
-            } else if (line.startsWith("data: ")) {
-              dataStr = line.slice(6);
-            }
+        scheduledFrame = requestAnimationFrame(() => {
+          scheduledFrame = null;
+          flushPendingChunk();
+          if (forceFlushTimer) {
+            clearTimeout(forceFlushTimer);
+            forceFlushTimer = null;
           }
+        });
 
-          if (!dataStr) continue;
+        forceFlushTimer = setTimeout(() => {
+          if (scheduledFrame !== null) {
+            cancelAnimationFrame(scheduledFrame);
+            scheduledFrame = null;
+          }
+          flushPendingChunk();
+          forceFlushTimer = null;
+        }, 100);
+      };
 
-          try {
-            const data = JSON.parse(dataStr);
+      const processSSEBlock = (block: string) => {
+        if (!block.trim()) return;
 
-            if (eventType === "sources" && data.sources) {
-              setMessages((prev) =>
-                prev.map((msg) =>
-                  msg.id === assistantMessageId
-                    ? { ...msg, sources: data.sources }
-                    : msg
-                )
-              );
-            }
+        let eventType = "";
+        const dataLines: string[] = [];
 
-            if (eventType === "chunk" && data.chunk) {
-              setMessages((prev) =>
-                prev.map((msg) =>
-                  msg.id === assistantMessageId
-                    ? { ...msg, content: msg.content + data.chunk }
-                    : msg
-                )
-              );
-            }
-
-            if (eventType === "complete") {
-              if (data.mode) {
-                mode = data.mode;
-                setMessages((prev) =>
-                  prev.map((msg) =>
-                    msg.id === assistantMessageId
-                      ? { ...msg, mode: data.mode }
-                      : msg
-                  )
-                );
-              }
-            }
-
-            if (eventType === "error" && data.error) {
-              throw new Error(data.error);
-            }
-          } catch (e) {
-            // 忽略 JSON 解析错误
-            console.warn("解析 SSE 数据失败:", e, dataStr);
+        for (const line of block.split("\n")) {
+          if (line.startsWith("event:")) {
+            eventType = line.slice(6).trim();
+          } else if (line.startsWith("data:")) {
+            dataLines.push(line.slice(5).trimStart());
           }
         }
+
+        if (dataLines.length === 0) return;
+
+        let data: any;
+        try {
+          data = JSON.parse(dataLines.join("\n"));
+        } catch (e) {
+          console.warn("解析 SSE 数据失败:", e, dataLines.join("\n"));
+          return;
+        }
+
+        if (eventType === "sources" && data.sources) {
+          updateAssistantMessage(assistantMessageId, (msg) => ({
+            ...msg,
+            sources: data.sources,
+          }));
+          return;
+        }
+
+        if (eventType === "chunk" && data.chunk) {
+          pendingChunkText += data.chunk;
+          scheduleFlush();
+          return;
+        }
+
+        if (eventType === "complete") {
+          if (data.mode) {
+            updateAssistantMessage(assistantMessageId, (msg) => ({
+              ...msg,
+              mode: data.mode,
+            }));
+          }
+          return;
+        }
+
+        if (eventType === "error") {
+          streamError = new Error(
+            typeof data.error === "string" ? data.error : "查询失败"
+          );
+        }
+      };
+
+      try {
+        while (!streamError) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+
+          // SSE 格式：event: type\ndata: json\n\n
+          const chunks = buffer.split("\n\n");
+          buffer = chunks.pop() || ""; // 保留最后一个不完整的块
+
+          for (const chunk of chunks) {
+            processSSEBlock(chunk);
+            if (streamError) break;
+          }
+        }
+      } finally {
+        clearFlushSchedulers();
+        flushPendingChunk();
+      }
+
+      // 读取结束后刷新解码器尾部缓冲
+      buffer += decoder.decode();
+      if (buffer.trim()) {
+        processSSEBlock(buffer);
+      }
+
+      clearFlushSchedulers();
+      flushPendingChunk();
+
+      if (streamError) {
+        throw streamError;
       }
     } catch (error) {
-      console.error("RAG 流式查询失败:", error);
+      if (error instanceof Error && error.name === "AbortError") {
+        updateAssistantMessage(assistantMessageId, (msg) => ({
+          ...msg,
+          content: msg.content || "已停止生成",
+        }));
+      } else {
+        console.error("RAG 流式查询失败:", error);
 
-      setMessages((prev) =>
-        prev.map((msg) =>
-          msg.id === assistantMessageId
-            ? {
-                ...msg,
-                content:
-                  error instanceof Error
-                    ? `抱歉，查询失败：${error.message}`
-                    : "抱歉，查询失败，请稍后重试。",
-              }
-            : msg
-        )
-      );
+        updateAssistantMessage(assistantMessageId, (msg) => ({
+          ...msg,
+          content:
+            error instanceof Error
+              ? `抱歉，查询失败：${error.message}`
+              : "抱歉，查询失败，请稍后重试。",
+        }));
+      }
     } finally {
       setIsLoading(false);
+      abortControllerRef.current = null;
     }
   };
 
@@ -390,7 +505,11 @@ export default function RAGChat({ trigger }: RAGChatProps) {
         </div>
 
         {/* 消息列表 */}
-        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+        <div
+          ref={messagesContainerRef}
+          onScroll={handleMessagesScroll}
+          className="flex-1 overflow-y-auto px-4 py-4 space-y-4"
+        >
           {messages.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center text-center">
               <Bot className="h-12 w-12 text-muted-foreground/50 mb-4" />

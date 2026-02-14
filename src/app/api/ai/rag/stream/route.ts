@@ -32,12 +32,37 @@ export async function POST(request: NextRequest) {
     const encoder = new TextEncoder();
     const stream = new ReadableStream({
       async start(controller) {
-        try {
-          // 发送初始消息（来源信息）
-          const sendEvent = (type: string, data: any) => {
+        let closed = false;
+
+        const closeStream = () => {
+          if (closed) return;
+          closed = true;
+          controller.close();
+        };
+
+        const sendEvent = (type: string, data: any) => {
+          if (closed || request.signal.aborted) return;
+
+          try {
             const message = `event: ${type}\ndata: ${JSON.stringify(data)}\n\n`;
             controller.enqueue(encoder.encode(message));
-          };
+          } catch (error) {
+            console.error("SSE 推送失败:", error);
+            closeStream();
+          }
+        };
+
+        const handleAbort = () => {
+          closeStream();
+        };
+
+        request.signal.addEventListener("abort", handleAbort, { once: true });
+
+        try {
+          if (request.signal.aborted) {
+            closeStream();
+            return;
+          }
 
           // 执行流式 RAG 查询
           await ragQueryStream(
@@ -57,23 +82,29 @@ export async function POST(request: NextRequest) {
                 sendEvent("complete", {
                   tokensUsed: result.tokensUsed,
                 });
-                controller.close();
+                closeStream();
               },
               onError: (error) => {
                 sendEvent("error", {
                   error: error instanceof Error ? error.message : "查询失败",
                 });
-                controller.close();
+                closeStream();
               },
-            }
+            },
+            request.signal
           );
+
+          if (!closed) {
+            closeStream();
+          }
         } catch (error) {
           console.error("流式 RAG 查询错误:", error);
-          const errorMessage = `event: error\ndata: ${JSON.stringify({
+          sendEvent("error", {
             error: error instanceof Error ? error.message : "查询失败",
-          })}\n\n`;
-          controller.enqueue(encoder.encode(errorMessage));
-          controller.close();
+          });
+          closeStream();
+        } finally {
+          request.signal.removeEventListener("abort", handleAbort);
         }
       },
     });
@@ -83,6 +114,7 @@ export async function POST(request: NextRequest) {
         "Content-Type": "text/event-stream",
         "Cache-Control": "no-cache",
         Connection: "keep-alive",
+        "X-Accel-Buffering": "no",
       },
     });
   } catch (error) {

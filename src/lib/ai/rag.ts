@@ -426,9 +426,14 @@ export interface RAGStreamCallbacks {
 export async function ragQueryStream(
   question: string,
   options: RAGOptions = {},
-  callbacks: RAGStreamCallbacks = {}
+  callbacks: RAGStreamCallbacks = {},
+  abortSignal?: AbortSignal
 ): Promise<void> {
   try {
+    if (abortSignal?.aborted) {
+      return;
+    }
+
     // 检查 Ollama 是否可用
     const ollamaAvailable = await isOllamaAvailable();
 
@@ -444,6 +449,10 @@ export async function ragQueryStream(
     // 1. 将问题向量化
     const [queryVector] = await aiClient.embed(question);
 
+    if (abortSignal?.aborted) {
+      return;
+    }
+
     // 2. 构建过滤条件
     const filters: Record<string, unknown> = {};
     if (options.filters?.categoryId) {
@@ -455,6 +464,10 @@ export async function ragQueryStream(
       limit: options.limit || 5,
       filters: Object.keys(filters).length > 0 ? filters : undefined,
     });
+
+    if (abortSignal?.aborted) {
+      return;
+    }
 
     // 如果没有搜索结果，提示用户
     if (searchResults.length === 0) {
@@ -502,6 +515,10 @@ export async function ragQueryStream(
     // 7. 发送来源信息（在生成回答前先返回来源，提升用户体验）
     callbacks.onSources?.(sources);
 
+    if (abortSignal?.aborted) {
+      return;
+    }
+
     // 8. 构建 Prompt（使用结构化 Prompt 确保回答质量）
     const prompt = buildRAGPrompt(context, question);
 
@@ -516,13 +533,21 @@ export async function ragQueryStream(
       ],
       {
         maxTokens: options.maxTokens || 1000,
+        signal: abortSignal,
       },
       callbacks.onChunk
     );
 
+    if (abortSignal?.aborted) {
+      return;
+    }
+
     // 10. 完成回调
     callbacks.onComplete?.({ tokensUsed: result.tokensUsed });
   } catch (error) {
+    if (abortSignal?.aborted) {
+      return;
+    }
     callbacks.onError?.(
       error instanceof Error ? error : new Error(String(error))
     );

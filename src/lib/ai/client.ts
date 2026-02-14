@@ -34,6 +34,8 @@ export interface ChatOptions {
   temperature?: number;
   /** 最大生成 token 数，限制回复长度，默认 2000 */
   maxTokens?: number;
+  /** 中断信号，用于取消流式请求 */
+  signal?: AbortSignal;
 }
 
 /**
@@ -270,21 +272,28 @@ class KimiClient implements AIClient {
     options: ChatOptions = {},
     onChunk?: (chunk: string) => void
   ): Promise<ChatResponse> {
-    const stream = await this.client.chat.completions.create({
-      model: options.model || process.env.KIMI_MODEL || "moonshot-v1-32k",
-      messages: messages.map((m) => ({
-        role: m.role,
-        content: m.content,
-      })),
-      temperature: options.temperature ?? 0.7,
-      max_tokens: options.maxTokens ?? 2000,
-      stream: true,
-    });
+    const stream = await this.client.chat.completions.create(
+      {
+        model: options.model || process.env.KIMI_MODEL || "moonshot-v1-32k",
+        messages: messages.map((m) => ({
+          role: m.role,
+          content: m.content,
+        })),
+        temperature: options.temperature ?? 0.7,
+        max_tokens: options.maxTokens ?? 2000,
+        stream: true,
+      },
+      options.signal ? { signal: options.signal } : undefined
+    );
 
     let fullContent = "";
     let tokensUsed = 0;
 
     for await (const chunk of stream) {
+      if (options.signal?.aborted) {
+        break;
+      }
+
       const content = chunk.choices[0]?.delta?.content || "";
       if (content) {
         fullContent += content;
