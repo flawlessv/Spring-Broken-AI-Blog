@@ -1,10 +1,10 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 // 获取文章列表（用于图片管理）
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user) {
@@ -16,30 +16,13 @@ export async function GET(request: NextRequest) {
         id: true,
         title: true,
         slug: true,
-        content: true,
-        coverImage: true,
-        createdAt: true,
-        updatedAt: true,
       },
-      orderBy: { updatedAt: "desc" },
-    });
-
-    // 为每篇文章计算内容中的图片数量
-    const postsWithImageCount = posts.map((post) => {
-      const imageRegex = /!\[.*?\]\((\/images\/[^)]+)\)/g;
-      const contentImages = post.content?.match(imageRegex) || [];
-      const imageCount = contentImages.length;
-
-      return {
-        ...post,
-        imageCount,
-        totalImages: imageCount + (post.coverImage ? 1 : 0),
-      };
+      orderBy: { createdAt: "desc" },
     });
 
     return NextResponse.json({
       success: true,
-      posts: postsWithImageCount,
+      posts,
     });
   } catch (error) {
     console.error("获取文章列表失败:", error);

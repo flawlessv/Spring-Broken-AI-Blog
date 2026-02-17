@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 import { z } from "zod";
 
 // 查询参数验证schema
@@ -60,16 +61,16 @@ export async function GET(request: NextRequest) {
     });
 
     // 构建查询条件
-    const where: any = {};
+    const where: Prisma.PostWhereInput = {};
+    const andClauses: Prisma.PostWhereInput[] = [];
 
     // 搜索条件
     if (query.search) {
-      where.AND = where.AND || [];
-      where.AND.push({
+      andClauses.push({
         OR: [
-          { title: { contains: query.search, mode: "insensitive" } },
-          { content: { contains: query.search, mode: "insensitive" } },
-          { excerpt: { contains: query.search, mode: "insensitive" } },
+          { title: { contains: query.search } },
+          { content: { contains: query.search } },
+          { excerpt: { contains: query.search } },
         ],
       });
     }
@@ -78,7 +79,7 @@ export async function GET(request: NextRequest) {
     if (query.status && query.status !== "all") {
       const statusArray = query.status.split(",").filter(Boolean);
       if (statusArray.length > 0) {
-        const statusConditions = [];
+        const statusConditions: Prisma.PostWhereInput[] = [];
 
         for (const status of statusArray) {
           switch (status) {
@@ -102,8 +103,7 @@ export async function GET(request: NextRequest) {
         }
 
         if (statusConditions.length > 0) {
-          where.AND = where.AND || [];
-          where.AND.push({
+          andClauses.push({
             OR: statusConditions,
           });
         }
@@ -119,8 +119,7 @@ export async function GET(request: NextRequest) {
     if (query.categoryNames && query.categoryNames !== "all") {
       const categoryNames = query.categoryNames.split(",").filter(Boolean);
       if (categoryNames.length > 0) {
-        where.AND = where.AND || [];
-        where.AND.push({
+        andClauses.push({
           category: {
             name: {
               in: categoryNames,
@@ -134,8 +133,7 @@ export async function GET(request: NextRequest) {
     if (query.tagIds && query.tagIds !== "all") {
       const tagNames = query.tagIds.split(",").filter(Boolean);
       if (tagNames.length > 0) {
-        where.AND = where.AND || [];
-        where.AND.push({
+        andClauses.push({
           tags: {
             some: {
               tag: {
@@ -149,9 +147,14 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    if (andClauses.length > 0) {
+      where.AND = andClauses;
+    }
+
     // 排序配置
-    const orderBy: any = {};
-    orderBy[query.sortBy] = query.sortOrder;
+    const orderBy: Prisma.PostOrderByWithRelationInput = {
+      [query.sortBy]: query.sortOrder,
+    };
 
     // 分页配置
     const skip = (query.page - 1) * query.limit;
@@ -267,52 +270,28 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 检查slug是否已存在，如果存在则更新文章
+    // POST 语义只负责创建，不允许“slug 已存在时覆盖旧文章”
     const existingPost = await prisma.post.findUnique({
       where: { slug: data.slug },
     });
 
     if (existingPost) {
-      // 更新现有文章
-      const post = await prisma.post.update({
-        where: { id: existingPost.id },
-        data: {
-          title: data.title,
-          slug: data.slug,
-          content: data.content,
-          excerpt: data.excerpt,
-          coverImage: data.coverImage,
-          published: data.published,
-          featured: data.featured,
-          publishedAt: data.published ? new Date() : null,
-          categoryId: data.categoryId || null,
-          tags: data.tags
-            ? {
-                deleteMany: {}, // 删除现有标签关联
-                create: data.tags.map((tagId) => ({
-                  tag: { connect: { id: tagId } },
-                })),
-              }
-            : undefined,
-        },
-        include: {
-          author: {
-            include: { profile: true },
-          },
-          category: true,
-          tags: {
-            include: { tag: true },
-          },
-        },
-      });
-
-      return NextResponse.json(post);
+      return NextResponse.json(
+        { error: "该 URL slug 已存在，请使用其他 slug" },
+        { status: 409 }
+      );
     }
 
     // 验证 authorId 是否存在
     const authorExists = await prisma.user.findUnique({
       where: { id: session.user.id },
     });
+    if (!authorExists) {
+      return NextResponse.json(
+        { error: "当前登录用户不存在" },
+        { status: 400 }
+      );
+    }
 
     // 创建文章
     const post = await prisma.post.create({

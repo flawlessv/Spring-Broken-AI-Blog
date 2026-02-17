@@ -99,9 +99,10 @@ async function getEmbeddingWithRetry(
   let lastError: Error | null = null;
 
   while (retries > 0) {
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30秒超时
+      timeoutId = setTimeout(() => controller.abort(), 30000); // 30秒超时
 
       const response = await fetch(`${baseUrl}/api/embeddings`, {
         method: "POST",
@@ -110,8 +111,6 @@ async function getEmbeddingWithRetry(
         signal: controller.signal,
         cache: "no-store", // 禁用 Next.js 的 fetch 缓存
       });
-
-      clearTimeout(timeoutId);
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -135,6 +134,10 @@ async function getEmbeddingWithRetry(
           `[Ollama] Embedding 失败，剩余重试次数: ${retries}，错误: ${lastError.message}`
         );
         await new Promise((resolve) => setTimeout(resolve, 1000)); // 等待1秒后重试
+      }
+    } finally {
+      if (timeoutId !== null) {
+        clearTimeout(timeoutId);
       }
     }
   }

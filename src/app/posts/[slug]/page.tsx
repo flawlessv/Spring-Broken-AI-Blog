@@ -1,6 +1,7 @@
 import { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import { cache } from "react";
 import { format } from "date-fns";
 import { zhCN } from "date-fns/locale";
 import { ChevronLeft } from "lucide-react";
@@ -53,7 +54,7 @@ interface Post {
   commentsCount: number;
 }
 
-async function getPost(slug: string): Promise<Post | null> {
+const getPost = cache(async (slug: string): Promise<Post | null> => {
   try {
     const response = await fetch(
       `${process.env.NEXTAUTH_URL || "http://localhost:7777"}/api/posts/${slug}`,
@@ -72,7 +73,7 @@ async function getPost(slug: string): Promise<Post | null> {
     console.error("获取文章详情失败:", error);
     return null;
   }
-}
+});
 
 export async function generateMetadata({
   params,

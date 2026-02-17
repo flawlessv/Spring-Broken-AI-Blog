@@ -8,6 +8,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 import { z } from "zod";
 
 // 更新文章的验证schema
@@ -33,6 +34,12 @@ const updatePostSchema = z.object({
   featured: z.boolean().optional(),
   categoryId: z.string().optional(),
   tags: z.array(z.string()).optional(),
+});
+
+const patchPostSchema = z.object({
+  published: z.boolean().optional(),
+  featured: z.boolean().optional(),
+  coverImage: z.string().optional().or(z.literal("")),
 });
 
 /**
@@ -142,9 +149,8 @@ export async function PUT(
       }
     }
 
-    // 构建更新数据
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const updateData: any = {};
+    // 构建更新数据（单次 update 完成，避免标签删改分离导致不一致）
+    const updateData: Prisma.PostUncheckedUpdateInput = {};
 
     if (data.title !== undefined) updateData.title = data.title;
     if (data.slug !== undefined) updateData.slug = data.slug;
@@ -169,20 +175,32 @@ export async function PUT(
     if (data.featured !== undefined) updateData.featured = data.featured;
 
     // 处理标签关联（如果提供）
-    if (data.tags) {
-      // 先删除现有的标签关联
-      await prisma.postTag.deleteMany({
-        where: { postId: id },
-      });
+    if (data.tags !== undefined) {
+      const uniqueTagIds = Array.from(new Set(data.tags));
 
-      // 创建新的标签关联
-      if (data.tags.length > 0) {
-        updateData.tags = {
-          create: data.tags.map((tagId) => ({
-            tag: { connect: { id: tagId } },
-          })),
-        };
+      if (uniqueTagIds.length > 0) {
+        const tags = await prisma.tag.findMany({
+          where: { id: { in: uniqueTagIds } },
+          select: { id: true },
+        });
+        if (tags.length !== uniqueTagIds.length) {
+          return NextResponse.json(
+            { error: "部分标签不存在" },
+            { status: 400 }
+          );
+        }
       }
+
+      updateData.tags = {
+        deleteMany: {},
+        ...(uniqueTagIds.length > 0
+          ? {
+              create: uniqueTagIds.map((tagId) => ({
+                tag: { connect: { id: tagId } },
+              })),
+            }
+          : {}),
+      };
     }
 
     // 更新文章
@@ -231,7 +249,7 @@ export async function PATCH(
       return NextResponse.json({ error: "无权限访问" }, { status: 403 });
     }
 
-    const body = await request.json();
+    const body = patchPostSchema.parse(await request.json());
 
     // 检查文章是否存在
     const existingPost = await prisma.post.findUnique({
@@ -242,8 +260,7 @@ export async function PATCH(
       return NextResponse.json({ error: "文章不存在" }, { status: 404 });
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const updateData: any = {};
+    const updateData: Prisma.PostUncheckedUpdateInput = {};
 
     // 处理发布状态变更
     if (body.published !== undefined) {
@@ -274,6 +291,14 @@ export async function PATCH(
     return NextResponse.json(updatedPost);
   } catch (error) {
     console.error("更新文章状态失败:", error);
+
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { error: "数据验证失败", details: error.issues },
+        { status: 400 }
+      );
+    }
+
     return NextResponse.json({ error: "服务器内部错误" }, { status: 500 });
   }
 }

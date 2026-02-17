@@ -5,7 +5,7 @@
  * 性能优化：添加useMemo、useCallback、防抖等优化
  */
 
-import { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { format } from "date-fns";
 import { zhCN } from "date-fns/locale";
@@ -22,7 +22,6 @@ import {
   MoreHorizontal,
   Download,
   Loader2,
-  Image as ImageIcon,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -100,6 +99,7 @@ export default function UnifiedPostsTable({
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [tableSearchQuery, setTableSearchQuery] = useState(searchQuery || "");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [exporting, setExporting] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -121,9 +121,6 @@ export default function UnifiedPostsTable({
   });
 
   const { toast } = useToast();
-
-  // 优化：使用useRef存储防抖定时器
-  const debounceRef = useRef<NodeJS.Timeout>();
 
   // 优化：使用useCallback缓存事件处理函数
   const fetchAvailableTags = useCallback(async () => {
@@ -167,7 +164,8 @@ export default function UnifiedPostsTable({
         limit: pagination.limit.toString(),
       });
 
-      if (searchQuery) params.set("search", searchQuery);
+      if (tableSearchQuery.trim())
+        params.set("search", tableSearchQuery.trim());
       if (statusFilter && statusFilter !== "all")
         params.set("status", statusFilter);
       if (categoryFilter && categoryFilter !== "all")
@@ -216,7 +214,7 @@ export default function UnifiedPostsTable({
       setLoading(false);
     }
   }, [
-    searchQuery,
+    tableSearchQuery,
     statusFilter,
     categoryFilter,
     pagination.page,
@@ -224,25 +222,20 @@ export default function UnifiedPostsTable({
     tableFilters,
   ]);
 
-  // 优化：防抖版本的fetchPosts，用于搜索等频繁触发的场景
-  const debouncedFetchPosts = useCallback(
-    (delay = 300) => {
-      if (debounceRef.current) {
-        clearTimeout(debounceRef.current);
-      }
-      debounceRef.current = setTimeout(() => {
-        fetchPosts();
-      }, delay);
-    },
-    [fetchPosts]
-  );
-
   // 处理表头筛选
   const handleTableFilters = useCallback((filters: Record<string, any>) => {
-    console.log("处理表头筛选:", filters);
     setTableFilters(filters);
     setPagination((prev) => ({ ...prev, page: 1 })); // 重置到第一页
   }, []);
+
+  const handleSearch = useCallback((query: string) => {
+    setTableSearchQuery(query);
+    setPagination((prev) => ({ ...prev, page: 1 }));
+  }, []);
+
+  useEffect(() => {
+    setTableSearchQuery(searchQuery || "");
+  }, [searchQuery]);
 
   useEffect(() => {
     fetchPosts();
@@ -375,15 +368,36 @@ export default function UnifiedPostsTable({
   const handleBatchDelete = useCallback(
     async (ids: string[]) => {
       try {
-        await Promise.all(
-          ids.map((id) => fetch(`/api/admin/posts/${id}`, { method: "DELETE" }))
+        const results = await Promise.all(
+          ids.map(async (id) => {
+            const response = await fetch(`/api/admin/posts/${id}`, {
+              method: "DELETE",
+            });
+            return { id, ok: response.ok };
+          })
         );
 
-        toast({
-          title: "批量删除成功",
-          description: `已删除 ${ids.length} 篇文章`,
-          variant: "success",
-        });
+        const failedCount = results.filter((item) => !item.ok).length;
+        const successCount = results.length - failedCount;
+
+        if (successCount > 0) {
+          toast({
+            title: failedCount === 0 ? "批量删除成功" : "批量删除部分成功",
+            description:
+              failedCount === 0
+                ? `已删除 ${successCount} 篇文章`
+                : `成功删除 ${successCount} 篇，失败 ${failedCount} 篇`,
+            variant: failedCount === 0 ? "success" : "default",
+          });
+        }
+
+        if (failedCount > 0 && successCount === 0) {
+          toast({
+            title: "批量删除失败",
+            description: "删除请求均未成功，请稍后重试",
+            variant: "destructive",
+          });
+        }
 
         setSelectedIds([]);
         onSelectionChange?.([]);
@@ -697,59 +711,7 @@ export default function UnifiedPostsTable({
       getStatusBadge,
       handleTogglePublish,
       handleToggleFeature,
-      handleDelete,
     ]
-  );
-
-  // 优化：使用useMemo缓存actions配置
-  const actions = useMemo(
-    () => [
-      {
-        key: "preview",
-        label: "预览",
-        icon: <Eye className="h-4 w-4" />,
-        onClick: (post: Post) => {
-          window.open(`/${post.slug}`, "_blank");
-        },
-      },
-      {
-        key: "edit",
-        label: "编辑",
-        icon: <Edit className="h-4 w-4" />,
-        onClick: (post: Post) => {
-          window.location.href = `/admin/posts/${post.id}/edit`;
-        },
-      },
-      {
-        key: "images",
-        label: "图片",
-        icon: <ImageIcon className="h-4 w-4" />,
-        onClick: (post: Post) => {
-          window.location.href = `/admin/posts/${post.id}/images`;
-        },
-      },
-      {
-        key: "publish",
-        label: (post: Post) => (post.published ? "取消发布" : "发布"),
-        onClick: handleTogglePublish,
-        variant: (post: Post) =>
-          post.published ? "warning" : ("success" as const),
-      },
-      {
-        key: "feature",
-        label: (post: Post) => (post.featured ? "取消精选" : "设为精选"),
-        icon: <Star className="h-4 w-4" />,
-        onClick: handleToggleFeature,
-      },
-      {
-        key: "delete",
-        label: "删除",
-        icon: <Trash2 className="h-4 w-4" />,
-        onClick: (post: Post) => setDeleteId(post.id),
-        variant: "danger" as const,
-      },
-    ],
-    [handleTogglePublish, handleToggleFeature, handleDelete]
   );
 
   // 优化：使用useMemo缓存batchActions配置
@@ -773,7 +735,7 @@ export default function UnifiedPostsTable({
         icon: <Trash2 className="h-4 w-4 mr-2" />,
       },
     ],
-    [exporting, handleExportSelected, handleBatchDelete]
+    [exporting, handleExportSelected]
   );
 
   return (
@@ -809,11 +771,9 @@ export default function UnifiedPostsTable({
         error={error}
         searchable={true}
         searchPlaceholder="搜索文章标题..."
-        onSearch={fetchPosts}
+        onSearch={handleSearch}
         filterable={enableTableFilters}
         onFilterChange={(filters) => {
-          console.log("Table filters changed:", filters);
-          // 处理筛选逻辑
           handleTableFilters(filters);
         }}
         selectable={true}

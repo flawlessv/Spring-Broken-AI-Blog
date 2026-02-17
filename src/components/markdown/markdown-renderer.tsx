@@ -22,7 +22,6 @@
 import { useState, useEffect, useMemo } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import rehypeRaw from "rehype-raw";
 import { List, ChevronRight, ChevronDown, ChevronLeft, X } from "lucide-react";
 
 import Mermaid from "./mermaid";
@@ -292,8 +291,8 @@ export default function MarkdownRenderer({
                 <ReactMarkdown
                   // remark 插件：处理 Markdown 语法解析阶段
                   remarkPlugins={[remarkGfm]} // 支持 GitHub Flavored Markdown 扩展语法
-                  // rehype 插件：处理 HTML 输出阶段
-                  rehypePlugins={[rehypeRaw]} // 原始HTML支持
+                  // 安全策略：不启用原始 HTML 直通渲染，避免注入风险
+                  // 如需白名单 HTML，请引入 rehype-sanitize 后再开启。
                   // 自定义组件：覆盖默认的 HTML 元素渲染
                   components={{
                     // 自定义 h1 标题渲染 - 为每个标题添加唯一 ID 以支持锚点跳转

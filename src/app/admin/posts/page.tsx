@@ -12,7 +12,6 @@ import CleanAdminLayout from "@/components/admin/clean-admin-layout";
 import UnifiedPostsTable from "@/components/admin/unified-posts-table";
 import { Button } from "@/components/ui/button";
 import {
-  Plus,
   Download,
   Loader2,
   Upload,
@@ -23,10 +22,6 @@ import {
 import { useToast } from "@/hooks/use-toast";
 
 export default function PostsPage() {
-  const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [categoryFilter, setCategoryFilter] = useState("all");
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [exportingAll, setExportingAll] = useState(false);
   const [importing, setImporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -154,7 +149,7 @@ export default function PostsPage() {
         // 显示结果
         toast({
           title: "导入完成",
-          description: result.message,
+          description,
         });
 
         // 如果有跳过的文件，显示详细信息
@@ -287,13 +282,7 @@ export default function PostsPage() {
 
         {/* 文章列表 */}
         <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
-          <UnifiedPostsTable
-            searchQuery={searchQuery}
-            statusFilter={statusFilter}
-            categoryFilter={categoryFilter}
-            onSelectionChange={setSelectedIds}
-            enableTableFilters={true}
-          />
+          <UnifiedPostsTable enableTableFilters={true} />
         </div>
 
         {/* 隐藏的文件输入框 - 用于选择多个文件 */}
