@@ -15,7 +15,7 @@ import {
  * - 用 SSE 可以把模型输出按 chunk 实时推送给前端，实现“边生成边显示”。
  *
  * 整体流程：
- * 1) 校验请求体（mode/message/history）
+ * 1) 校验请求体（mode/message/history/articleContext）
  * 2) 拉取上下文（作者信息 + 公开文章元信息）
  * 3) 组装 system prompt 与历史消息
  * 4) 调用 AIClient.chatStream，边收到 chunk 边通过 SSE 推给前端
@@ -27,6 +27,15 @@ interface CompanionHistoryMessage {
   role: "user" | "assistant";
   /** 文本内容（会在入参阶段做长度裁剪） */
   content: string;
+}
+
+interface CompanionArticleContext {
+  slug: string;
+  title: string;
+  excerpt: string;
+  content: string;
+  category: string;
+  tags: string[];
 }
 
 /**
@@ -105,6 +114,47 @@ function normalizeHistory(value: unknown): CompanionHistoryMessage[] {
   return normalized.slice(-MAX_HISTORY_MESSAGES);
 }
 
+function normalizeArticleContext(
+  value: unknown
+): CompanionArticleContext | null {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+
+  const context = value as {
+    slug?: unknown;
+    title?: unknown;
+    excerpt?: unknown;
+    content?: unknown;
+    category?: unknown;
+    tags?: unknown;
+  };
+
+  const slug = normalizeText(context.slug, 120);
+  const title = normalizeText(context.title, 160);
+  if (!slug || !title) {
+    return null;
+  }
+
+  const tags = Array.isArray(context.tags)
+    ? context.tags
+        .map((item) =>
+          typeof item === "string" ? item.trim().slice(0, 30) : ""
+        )
+        .filter(Boolean)
+        .slice(0, 8)
+    : [];
+
+  return {
+    slug,
+    title,
+    excerpt: normalizeText(context.excerpt, 400),
+    content: normalizeText(context.content, 3200),
+    category: normalizeText(context.category, 50),
+    tags,
+  };
+}
+
 /**
  * 把事件编码为 SSE 协议帧：
  * event: <事件名>
@@ -149,6 +199,10 @@ export async function POST(request: NextRequest) {
   );
   // 历史消息只允许 user/assistant 角色，不信任前端传来的任意字段
   const history = normalizeHistory((body as { history?: unknown })?.history);
+  // 文章详情页可选上下文（仅在前台文章详情页传入）
+  const articleContext = normalizeArticleContext(
+    (body as { articleContext?: unknown })?.articleContext
+  );
 
   if (!isCompanionMode(mode)) {
     return NextResponse.json(
@@ -256,13 +310,32 @@ export async function POST(request: NextRequest) {
         sendEvent("context", {
           articleCount: articles.length,
           author: author.displayName,
+          hasArticleContext: Boolean(articleContext),
         });
 
-        const systemPrompt = buildCompanionSystemPrompt({
+        let systemPrompt = buildCompanionSystemPrompt({
           mode,
           author,
           articles,
         });
+        if (articleContext) {
+          const tagText =
+            articleContext.tags.length > 0
+              ? articleContext.tags.join("、")
+              : "无";
+          systemPrompt += `
+
+【当前页面文章（优先参考）】
+- 标题：${articleContext.title}
+- slug：${articleContext.slug}
+- 分类：${articleContext.category || "未分类"}
+- 标签：${tagText}
+- 摘要：${articleContext.excerpt || "无"}
+- 正文节选：${articleContext.content || "无"}
+
+【当前页面回答约束】
+如果用户问题与当前页面文章有关，请优先基于这篇文章回答。`;
+        }
 
         /**
          * messages 顺序说明：

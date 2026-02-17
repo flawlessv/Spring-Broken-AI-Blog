@@ -1,6 +1,14 @@
 "use client";
 
-import { Component, type ReactNode, useEffect, useRef, useState } from "react";
+import {
+  Component,
+  type ReactNode,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { usePathname } from "next/navigation";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import {
@@ -14,6 +22,12 @@ import {
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 /**
  * 前台看板娘聊天组件（客户端）
@@ -46,9 +60,13 @@ interface PersistedChatState {
   messages: CompanionMessage[];
 }
 
-interface CompanionArticlesResponse {
-  /** 站内公开文章总数（用于顶部提示） */
-  total?: number;
+interface CurrentArticleContext {
+  slug: string;
+  title: string;
+  excerpt: string;
+  content: string;
+  category: string;
+  tags: string[];
 }
 
 interface SSEPayload {
@@ -125,7 +143,7 @@ const LIVE2D_MOBILE_SCALE = Number(
 const LIVE2D_DISABLE_AT_OR_BELOW_WIDTH = Number(
   process.env.NEXT_PUBLIC_COMPANION_LIVE2D_DISABLE_AT_OR_BELOW_WIDTH || "768"
 );
-const QUICK_START_OPTIONS: Array<{
+const HOME_QUICK_START_OPTIONS: Array<{
   mode: CompanionMode;
   label: string;
   prompt: string;
@@ -146,6 +164,19 @@ const QUICK_START_OPTIONS: Array<{
     prompt: "你好，先用一句话介绍你自己。",
   },
 ];
+
+function getPostSlugFromPathname(pathname: string): string | null {
+  const match = pathname.match(/^\/posts\/([^/?#]+)/);
+  if (!match?.[1]) {
+    return null;
+  }
+
+  try {
+    return decodeURIComponent(match[1]);
+  } catch {
+    return match[1];
+  }
+}
 
 function createId(): string {
   // 优先使用浏览器原生 UUID，降级为时间戳+随机串
@@ -286,6 +317,7 @@ function AssistantMarkdown({ content }: { content: string }) {
 }
 
 export default function AnimeAssistantChat() {
+  const pathname = usePathname();
   // 是否展开聊天面板
   const [open, setOpen] = useState(false);
   // 当前对话模式：文章 / 作者 / 自由聊
@@ -296,10 +328,9 @@ export default function AnimeAssistantChat() {
   const [input, setInput] = useState("");
   // 当前是否处于流式接收中（用于禁用重复发送/显示停止按钮）
   const [isStreaming, setIsStreaming] = useState(false);
-  // 文章元信息统计（用于头部提示）
-  const [articlesTotal, setArticlesTotal] = useState<number | null>(null);
-  // 文章元信息加载错误提示
-  const [metaError, setMetaError] = useState<string>("");
+  // 文章详情页上下文（仅在 /posts/[slug] 路由下使用）
+  const [currentArticleContext, setCurrentArticleContext] =
+    useState<CurrentArticleContext | null>(null);
   // Live2D 是否成功初始化并可交互
   const [live2dReady, setLive2dReady] = useState(false);
   // Live2D 加载失败标记（显示降级提示）
@@ -317,6 +348,47 @@ export default function AnimeAssistantChat() {
   const streamChunkBufferRef = useRef("");
   // chunk flush 定时器句柄
   const streamFlushTimerRef = useRef<number | null>(null);
+  // 当前是否处于文章详情页以及对应 slug（用于给服务端补充“当前文章上下文”）
+  const currentPostSlugRef = useRef<string | null>(null);
+
+  const currentPostSlug = getPostSlugFromPathname(pathname || "");
+
+  const quickStartOptions = useMemo(() => {
+    if (!currentPostSlug) {
+      return HOME_QUICK_START_OPTIONS;
+    }
+
+    const title = currentArticleContext?.title || "这篇文章";
+    return [
+      {
+        mode: "articles" as const,
+        label: "总结这篇文章",
+        prompt: `请总结《${title}》的核心内容，控制在 3 点以内。`,
+      },
+      {
+        mode: "articles" as const,
+        label: "提炼关键观点",
+        prompt: `请提炼《${title}》最关键的 3 个观点，并分别解释它们解决什么问题。`,
+      },
+      {
+        mode: "articles" as const,
+        label: "给我行动建议",
+        prompt: `基于《${title}》，给我 3 条可以马上执行的实践建议。`,
+      },
+    ];
+  }, [currentArticleContext?.title, currentPostSlug]);
+
+  const greetingText = useMemo(() => {
+    if (!currentPostSlug) {
+      return "你好呀，我是小春，可以陪你聊文章、作者和技术话题。";
+    }
+
+    if (currentArticleContext?.title) {
+      return `你好呀，我已经看到《${currentArticleContext.title}》，可以直接问我这篇文章。`;
+    }
+
+    return "你好呀，你在文章详情页，我可以优先基于当前文章来回答。";
+  }, [currentArticleContext?.title, currentPostSlug]);
 
   useEffect(() => {
     // 首次挂载：从 localStorage 恢复模式和最近聊天记录
@@ -360,35 +432,71 @@ export default function AnimeAssistantChat() {
   }, [mode, messages]);
 
   useEffect(() => {
-    // 拉取站内公开文章元信息，仅用于前端显示和提示（不参与回答渲染）
+    // 进入文章详情页时，预取当前文章内容作为对话上下文
+    if (!currentPostSlug) {
+      currentPostSlugRef.current = null;
+      setCurrentArticleContext(null);
+      return;
+    }
+
+    currentPostSlugRef.current = currentPostSlug;
     let active = true;
 
-    fetch("/api/ai/companion/articles", { cache: "no-store" })
+    fetch(`/api/posts/${encodeURIComponent(currentPostSlug)}`, {
+      cache: "no-store",
+    })
       .then(async (res) => {
         if (!res.ok) {
-          throw new Error("文章元信息加载失败");
+          throw new Error("加载当前文章上下文失败");
         }
-        const data = (await res.json()) as CompanionArticlesResponse;
-        // active 防止组件卸载后 setState
-        if (!active) {
+        const data = (await res.json()) as {
+          post?: {
+            slug?: unknown;
+            title?: unknown;
+            excerpt?: unknown;
+            content?: unknown;
+            category?: { name?: unknown } | null;
+            tags?: Array<{ name?: unknown }>;
+          };
+        };
+        const post = data.post;
+        if (!active || !post || typeof post.slug !== "string") {
           return;
         }
-        setArticlesTotal(typeof data.total === "number" ? data.total : null);
-        setMetaError("");
+
+        const tags = Array.isArray(post.tags)
+          ? post.tags
+              .map((item) => (typeof item?.name === "string" ? item.name : ""))
+              .filter(Boolean)
+              .slice(0, 8)
+          : [];
+
+        setCurrentArticleContext({
+          slug: post.slug,
+          title:
+            typeof post.title === "string" && post.title.trim()
+              ? post.title.trim()
+              : currentPostSlug,
+          excerpt:
+            typeof post.excerpt === "string" ? post.excerpt.slice(0, 300) : "",
+          content:
+            typeof post.content === "string" ? post.content.slice(0, 2600) : "",
+          category:
+            typeof post.category?.name === "string" ? post.category.name : "",
+          tags,
+        });
       })
-      .catch((error) => {
+      .catch(() => {
         if (!active) {
           return;
         }
-        // 这里不阻断聊天，只提示“文章统计不可用”
-        console.error("加载看板娘文章元信息失败:", error);
-        setMetaError("文章列表加载失败");
+        setCurrentArticleContext(null);
       });
 
     return () => {
       active = false;
     };
-  }, []);
+  }, [currentPostSlug]);
 
   useEffect(() => {
     // 初始化 Live2D 看板娘：桌面端启用，移动端禁用
@@ -670,6 +778,9 @@ export default function AnimeAssistantChat() {
     // ===== 第 0 步：前置校验 =====
     const content = (options?.content ?? input).trim();
     const modeToSend = options?.mode ?? mode;
+    const articleContextToSend = currentPostSlugRef.current
+      ? currentArticleContext
+      : null;
     // 空文本或当前已有进行中的请求时，不允许重复发送
     if (!content || isStreaming) {
       return;
@@ -722,6 +833,7 @@ export default function AnimeAssistantChat() {
           mode: modeToSend,
           message: content,
           history,
+          articleContext: articleContextToSend,
         }),
         signal: controller.signal,
       });
@@ -807,7 +919,11 @@ export default function AnimeAssistantChat() {
     }
   };
 
-  const handleQuickStart = (option: (typeof QUICK_START_OPTIONS)[number]) => {
+  const handleQuickStart = (option: {
+    mode: CompanionMode;
+    label: string;
+    prompt: string;
+  }) => {
     if (isStreaming) {
       return;
     }
@@ -834,11 +950,21 @@ export default function AnimeAssistantChat() {
                   <Sparkles className="w-4 h-4 text-rose-500" />
                   前台看板娘 小春
                 </p>
-                <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                  {metaError
-                    ? metaError
-                    : `已加载 ${articlesTotal ?? "…"} 篇公开文章元信息`}
-                </p>
+                <TooltipProvider delayDuration={200}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <p
+                        className="text-xs text-muted-foreground mt-0.5 truncate cursor-help"
+                        tabIndex={0}
+                      >
+                        {greetingText}
+                      </p>
+                    </TooltipTrigger>
+                    <TooltipContent className="z-[120] max-w-[280px] break-words leading-5">
+                      {greetingText}
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
               </div>
               <button
                 type="button"
@@ -874,12 +1000,14 @@ export default function AnimeAssistantChat() {
                 <p>
                   我是小春，可以陪你快速了解站点内容。
                   <br />
-                  你也可以直接点下面的快速问题开始聊天。
+                  {currentPostSlug
+                    ? "检测到你在文章详情页，可以直接问这篇文章。"
+                    : "你也可以直接点下面的快速问题开始聊天。"}
                 </p>
                 <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
-                  {QUICK_START_OPTIONS.map((option) => (
+                  {quickStartOptions.map((option) => (
                     <button
-                      key={option.mode}
+                      key={`${option.mode}-${option.label}`}
                       type="button"
                       onClick={() => handleQuickStart(option)}
                       className="rounded-xl border border-border bg-background/80 px-2.5 py-2 text-xs font-medium text-foreground transition-colors hover:bg-accent"
