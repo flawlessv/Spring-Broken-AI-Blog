@@ -1,13 +1,6 @@
 "use client";
 
-import {
-  Component,
-  type ReactNode,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { Component, type ReactNode, useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import {
@@ -16,6 +9,7 @@ import {
   MessageCircleMore,
   SendHorizontal,
   Sparkles,
+  Trash2,
   UserRound,
   X,
 } from "lucide-react";
@@ -131,10 +125,26 @@ const LIVE2D_MOBILE_SCALE = Number(
 const LIVE2D_DISABLE_AT_OR_BELOW_WIDTH = Number(
   process.env.NEXT_PUBLIC_COMPANION_LIVE2D_DISABLE_AT_OR_BELOW_WIDTH || "768"
 );
-const MODE_OPTIONS: Array<{ value: CompanionMode; label: string }> = [
-  { value: "articles", label: "了解文章" },
-  { value: "author", label: "了解作者" },
-  { value: "free", label: "随便聊" },
+const QUICK_START_OPTIONS: Array<{
+  mode: CompanionMode;
+  label: string;
+  prompt: string;
+}> = [
+  {
+    mode: "articles",
+    label: "了解文章",
+    prompt: "推荐 3 篇适合先看的文章，并说下推荐理由。",
+  },
+  {
+    mode: "author",
+    label: "了解作者",
+    prompt: "简单介绍一下作者的技术背景和擅长方向。",
+  },
+  {
+    mode: "free",
+    label: "随便聊",
+    prompt: "你好，先用一句话介绍你自己。",
+  },
 ];
 
 function createId(): string {
@@ -307,20 +317,6 @@ export default function AnimeAssistantChat() {
   const streamChunkBufferRef = useRef("");
   // chunk flush 定时器句柄
   const streamFlushTimerRef = useRef<number | null>(null);
-
-  /**
-   * 根据模式展示输入提示语：
-   * - 不是功能逻辑，只是降低用户“怎么问”的成本
-   */
-  const modeHint = useMemo(() => {
-    if (mode === "articles") {
-      return "例如：推荐 3 篇前端性能优化文章";
-    }
-    if (mode === "author") {
-      return "例如：你主人擅长哪些技术方向？";
-    }
-    return "例如：最近工作有点烦，给我点建议";
-  }, [mode]);
 
   useEffect(() => {
     // 首次挂载：从 localStorage 恢复模式和最近聊天记录
@@ -580,6 +576,16 @@ export default function AnimeAssistantChat() {
     setIsStreaming(false);
   };
 
+  const clearConversation = () => {
+    // 清空前先停止正在进行的流式请求，避免后续 chunk 再写回旧会话
+    abortRef.current?.abort();
+    abortRef.current = null;
+    setIsStreaming(false);
+    resetStreamingRuntime();
+    setInput("");
+    setMessages([]);
+  };
+
   const updateActiveAssistantMessage = (
     updater: (item: CompanionMessage) => CompanionMessage
   ) => {
@@ -657,12 +663,21 @@ export default function AnimeAssistantChat() {
     activeAssistantIdRef.current = null;
   };
 
-  const sendMessage = async () => {
+  const sendMessage = async (options?: {
+    content?: string;
+    mode?: CompanionMode;
+  }) => {
     // ===== 第 0 步：前置校验 =====
-    const content = input.trim();
+    const content = (options?.content ?? input).trim();
+    const modeToSend = options?.mode ?? mode;
     // 空文本或当前已有进行中的请求时，不允许重复发送
     if (!content || isStreaming) {
       return;
+    }
+
+    // 通过“快速开始”发送时，同步更新当前模式，便于后续继续追问
+    if (mode !== modeToSend) {
+      setMode(modeToSend);
     }
 
     // 仅带最近消息给后端，控制 token 消耗和延迟
@@ -704,7 +719,7 @@ export default function AnimeAssistantChat() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          mode,
+          mode: modeToSend,
           message: content,
           history,
         }),
@@ -792,6 +807,16 @@ export default function AnimeAssistantChat() {
     }
   };
 
+  const handleQuickStart = (option: (typeof QUICK_START_OPTIONS)[number]) => {
+    if (isStreaming) {
+      return;
+    }
+
+    // 满足“先填充到输入框，再自动发送”的交互预期
+    setInput(option.prompt);
+    void sendMessage({ content: option.prompt, mode: option.mode });
+  };
+
   return (
     <div
       className={cn(
@@ -800,7 +825,7 @@ export default function AnimeAssistantChat() {
       )}
     >
       {open && (
-        // 聊天主面板（标题区 / 模式切换区 / 消息区 / 输入区）
+        // 聊天主面板（标题区 / 消息区 / 输入区）
         <section className="w-[min(92vw,380px)] h-[min(72vh,560px)] rounded-3xl border border-border/70 bg-background/95 backdrop-blur-md shadow-2xl overflow-hidden flex flex-col">
           <header className="relative px-4 py-3 border-b border-border/70 bg-gradient-to-r from-rose-100/70 via-orange-100/60 to-yellow-100/70 dark:from-rose-950/50 dark:via-zinc-900 dark:to-amber-950/40">
             <div className="flex items-center justify-between gap-3">
@@ -824,38 +849,20 @@ export default function AnimeAssistantChat() {
                 <X className="w-4 h-4" />
               </button>
             </div>
-          </header>
-
-          <div className="px-3 py-2 border-b border-border/70 bg-muted/40">
-            <div className="grid grid-cols-3 gap-2">
-              {MODE_OPTIONS.map((option) => (
-                <button
-                  key={option.value}
-                  type="button"
-                  onClick={() => setMode(option.value)}
-                  className={cn(
-                    "rounded-xl px-2 py-1.5 text-xs font-medium border transition-colors",
-                    mode === option.value
-                      ? "border-rose-300 bg-rose-100 text-rose-700 dark:border-rose-700 dark:bg-rose-950/50 dark:text-rose-200"
-                      : "border-border bg-background/80 text-muted-foreground hover:text-foreground"
-                  )}
-                >
-                  {/* 不同模式用不同 icon，帮助用户快速感知当前语义 */}
-                  {option.value === "articles" && (
-                    <BookOpenText className="w-3.5 h-3.5 mx-auto mb-0.5" />
-                  )}
-                  {option.value === "author" && (
-                    <UserRound className="w-3.5 h-3.5 mx-auto mb-0.5" />
-                  )}
-                  {option.value === "free" && (
-                    <MessageCircleMore className="w-3.5 h-3.5 mx-auto mb-0.5" />
-                  )}
-                  {option.label}
-                </button>
-              ))}
+            <div className="mt-2">
+              <button
+                type="button"
+                onClick={clearConversation}
+                disabled={
+                  messages.length === 0 && !isStreaming && !input.trim()
+                }
+                className="inline-flex items-center gap-1 rounded-lg border border-border/70 bg-background/70 px-2 py-1 text-[11px] text-muted-foreground hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                清空对话
+              </button>
             </div>
-            <p className="mt-2 text-[11px] text-muted-foreground">{modeHint}</p>
-          </div>
+          </header>
 
           <div
             ref={scrollRef}
@@ -864,9 +871,34 @@ export default function AnimeAssistantChat() {
             {/* 空态提示 */}
             {messages.length === 0 && (
               <div className="rounded-2xl border border-dashed border-border px-3 py-3 text-sm text-muted-foreground leading-6">
-                我是小春，可以陪你快速了解站点内容。
-                <br />
-                你可以问我文章推荐、作者经历，或者随便聊聊。
+                <p>
+                  我是小春，可以陪你快速了解站点内容。
+                  <br />
+                  你也可以直接点下面的快速问题开始聊天。
+                </p>
+                <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
+                  {QUICK_START_OPTIONS.map((option) => (
+                    <button
+                      key={option.mode}
+                      type="button"
+                      onClick={() => handleQuickStart(option)}
+                      className="rounded-xl border border-border bg-background/80 px-2.5 py-2 text-xs font-medium text-foreground transition-colors hover:bg-accent"
+                    >
+                      <span className="mb-1 inline-flex w-full items-center justify-center">
+                        {option.mode === "articles" && (
+                          <BookOpenText className="h-3.5 w-3.5" />
+                        )}
+                        {option.mode === "author" && (
+                          <UserRound className="h-3.5 w-3.5" />
+                        )}
+                        {option.mode === "free" && (
+                          <MessageCircleMore className="h-3.5 w-3.5" />
+                        )}
+                      </span>
+                      <span>{option.label}</span>
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
 
@@ -882,13 +914,15 @@ export default function AnimeAssistantChat() {
                 )}
               >
                 {message.role === "assistant" ? (
-                  isStreaming && message.id === activeAssistantIdRef.current ? (
-                    // 流式阶段先用纯文本，降低高频 chunk 的 Markdown 重解析开销
-                    <p className="whitespace-pre-wrap text-sm leading-6 text-foreground/90">
-                      {message.content}
+                  isStreaming &&
+                  message.id === activeAssistantIdRef.current &&
+                  message.content.trim().length === 0 ? (
+                    <p className="inline-flex items-center gap-1.5 text-sm text-muted-foreground">
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      思考中...
                     </p>
                   ) : (
-                    // 完成后再用 Markdown 精渲染，兼顾性能与展示效果
+                    // 助手消息始终按 Markdown 渲染
                     <AssistantMarkdown content={message.content} />
                   )
                 ) : (
