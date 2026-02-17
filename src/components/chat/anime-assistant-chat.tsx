@@ -86,6 +86,9 @@ const STORAGE_KEY = "anime-companion-chat-v1";
 const MAX_LOCAL_MESSAGES = 30;
 // 每次请求只携带最近 N 条上下文，控制 token 和响应耗时
 const MAX_HISTORY_MESSAGES = 12;
+// 高频 SSE chunk 的前端合批策略：超过阈值立即 flush，否则按固定间隔 flush
+const CHUNK_FLUSH_INTERVAL_MS = 33;
+const CHUNK_FLUSH_MIN_CHARS = 24;
 const LIVE2D_ENABLED =
   (process.env.NEXT_PUBLIC_COMPANION_LIVE2D_ENABLED || "true")
     .trim()
@@ -298,6 +301,12 @@ export default function AnimeAssistantChat() {
   const scrollRef = useRef<HTMLDivElement | null>(null);
   // 记录当前请求的 AbortController，支持“停止生成”
   const abortRef = useRef<AbortController | null>(null);
+  // 当前流式会话对应的 assistant 消息 ID（用于定向更新最后一条助手消息）
+  const activeAssistantIdRef = useRef<string | null>(null);
+  // 暂存尚未刷入 UI 的增量 chunk，避免每个 token 都触发一次 setState
+  const streamChunkBufferRef = useRef("");
+  // chunk flush 定时器句柄
+  const streamFlushTimerRef = useRef<number | null>(null);
 
   /**
    * 根据模式展示输入提示语：
@@ -556,6 +565,10 @@ export default function AnimeAssistantChat() {
     () => () => {
       // 组件卸载时中断进行中的请求，避免后台继续占用资源
       abortRef.current?.abort();
+      if (streamFlushTimerRef.current !== null) {
+        window.clearTimeout(streamFlushTimerRef.current);
+        streamFlushTimerRef.current = null;
+      }
     },
     []
   );
@@ -565,6 +578,83 @@ export default function AnimeAssistantChat() {
     abortRef.current?.abort();
     abortRef.current = null;
     setIsStreaming(false);
+  };
+
+  const updateActiveAssistantMessage = (
+    updater: (item: CompanionMessage) => CompanionMessage
+  ) => {
+    const assistantId = activeAssistantIdRef.current;
+    if (!assistantId) {
+      return;
+    }
+
+    setMessages((prev) => {
+      const index = prev.findIndex((item) => item.id === assistantId);
+      if (index === -1) {
+        return prev;
+      }
+      const current = prev[index];
+      const nextItem = updater(current);
+      if (nextItem === current) {
+        return prev;
+      }
+      const next = [...prev];
+      next[index] = nextItem;
+      return next;
+    });
+  };
+
+  const clearChunkFlushTimer = () => {
+    if (streamFlushTimerRef.current === null) {
+      return;
+    }
+    window.clearTimeout(streamFlushTimerRef.current);
+    streamFlushTimerRef.current = null;
+  };
+
+  const flushPendingAssistantChunk = () => {
+    const pendingChunk = streamChunkBufferRef.current;
+    if (!pendingChunk) {
+      return;
+    }
+    streamChunkBufferRef.current = "";
+    updateActiveAssistantMessage((item) => ({
+      ...item,
+      content: `${item.content}${pendingChunk}`,
+    }));
+  };
+
+  const scheduleChunkFlush = () => {
+    if (streamFlushTimerRef.current !== null) {
+      return;
+    }
+    streamFlushTimerRef.current = window.setTimeout(() => {
+      streamFlushTimerRef.current = null;
+      flushPendingAssistantChunk();
+    }, CHUNK_FLUSH_INTERVAL_MS);
+  };
+
+  const enqueueAssistantChunk = (chunk: string) => {
+    if (!chunk) {
+      return;
+    }
+    streamChunkBufferRef.current += chunk;
+
+    if (streamChunkBufferRef.current.length >= CHUNK_FLUSH_MIN_CHARS) {
+      // 达到字符阈值立刻提交，保证响应足够实时
+      clearChunkFlushTimer();
+      flushPendingAssistantChunk();
+      return;
+    }
+
+    // 小 chunk 走定时批量提交，降低渲染频率
+    scheduleChunkFlush();
+  };
+
+  const resetStreamingRuntime = () => {
+    clearChunkFlushTimer();
+    streamChunkBufferRef.current = "";
+    activeAssistantIdRef.current = null;
   };
 
   const sendMessage = async () => {
@@ -595,6 +685,10 @@ export default function AnimeAssistantChat() {
     // ===== 第 1 步：乐观更新 UI =====
     // 立即把“用户消息 + 空助手气泡”插入列表，避免用户感知等待
     setMessages((prev) => [...prev, userMessage, assistantPlaceholder]);
+    // 当前请求只会更新这条助手占位消息
+    activeAssistantIdRef.current = assistantId;
+    streamChunkBufferRef.current = "";
+    clearChunkFlushTimer();
     setInput("");
     setIsStreaming(true);
 
@@ -628,35 +722,24 @@ export default function AnimeAssistantChat() {
       // ===== 第 3 步：消费 SSE，按事件类型更新 UI =====
       await consumeSSE(response.body, (event, payload) => {
         if (event === "chunk") {
-          // 增量拼接 assistant 气泡，实现打字机效果
+          // 先写入 buffer，再批量 flush 到 UI，避免“每 token 一次 setState”
           const chunk =
             typeof payload?.content === "string" ? payload.content : "";
-          if (!chunk) {
-            return;
-          }
-          setMessages((prev) =>
-            prev.map((item) =>
-              item.id === assistantId
-                ? { ...item, content: `${item.content}${chunk}` }
-                : item
-            )
-          );
+          enqueueAssistantChunk(chunk);
           return;
         }
 
         if (event === "done") {
+          // done 前先把 buffer 里未刷新的尾巴提交到 UI
+          flushPendingAssistantChunk();
           // 正常情况下 chunk 已经拼满；这里处理“只收到 done”或最后补齐
           const finalContent =
             typeof payload?.content === "string" ? payload.content : "";
           if (!finalContent) {
             return;
           }
-          setMessages((prev) =>
-            prev.map((item) =>
-              item.id === assistantId && !item.content
-                ? { ...item, content: finalContent }
-                : item
-            )
+          updateActiveAssistantMessage((item) =>
+            item.content ? item : { ...item, content: finalContent }
           );
           return;
         }
@@ -672,6 +755,10 @@ export default function AnimeAssistantChat() {
       });
     } catch (error) {
       // ===== 第 4 步：统一异常兜底 =====
+      // 避免定时器尚未触发导致“最后几个 chunk 丢失”
+      clearChunkFlushTimer();
+      flushPendingAssistantChunk();
+
       const isAbortError =
         error instanceof DOMException && error.name === "AbortError";
       if (!isAbortError) {
@@ -680,35 +767,28 @@ export default function AnimeAssistantChat() {
           error instanceof Error
             ? error.message
             : "AI 助手处理失败，请稍后重试";
-        setMessages((prev) =>
-          prev.map((item) =>
-            item.id === assistantId
-              ? {
-                  ...item,
-                  content: `抱歉，这次回复失败了：${errorMessage}`,
-                  isError: true,
-                }
-              : item
-          )
-        );
+        updateActiveAssistantMessage((item) => ({
+          ...item,
+          content: `抱歉，这次回复失败了：${errorMessage}`,
+          isError: true,
+        }));
       } else {
         // 用户主动停止时，如果助手气泡还是空的，给一条中断提示
-        setMessages((prev) =>
-          prev.map((item) =>
-            item.id === assistantId && !item.content
-              ? {
-                  ...item,
-                  content: "本次回复已停止，你可以继续提问。",
-                  isError: true,
-                }
-              : item
-          )
+        updateActiveAssistantMessage((item) =>
+          item.content
+            ? item
+            : {
+                ...item,
+                content: "本次回复已停止，你可以继续提问。",
+                isError: true,
+              }
         );
       }
     } finally {
       // ===== 第 5 步：收尾，释放请求句柄 =====
       abortRef.current = null;
       setIsStreaming(false);
+      resetStreamingRuntime();
     }
   };
 
@@ -802,8 +882,15 @@ export default function AnimeAssistantChat() {
                 )}
               >
                 {message.role === "assistant" ? (
-                  // 助手消息支持 Markdown，便于展示列表/代码块等结构化内容
-                  <AssistantMarkdown content={message.content} />
+                  isStreaming && message.id === activeAssistantIdRef.current ? (
+                    // 流式阶段先用纯文本，降低高频 chunk 的 Markdown 重解析开销
+                    <p className="whitespace-pre-wrap text-sm leading-6 text-foreground/90">
+                      {message.content}
+                    </p>
+                  ) : (
+                    // 完成后再用 Markdown 精渲染，兼顾性能与展示效果
+                    <AssistantMarkdown content={message.content} />
+                  )
                 ) : (
                   <p className="whitespace-pre-wrap">{message.content}</p>
                 )}

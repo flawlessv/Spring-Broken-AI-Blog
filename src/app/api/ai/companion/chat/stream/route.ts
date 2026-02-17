@@ -46,6 +46,9 @@ const MAX_HISTORY_MESSAGES = 12;
  * 即使某条历史消息非常长，也会被裁剪，避免污染当前请求。
  */
 const MAX_HISTORY_MESSAGE_LENGTH = 1200;
+// 服务端 chunk 合批：字符达到阈值立即发送，否则按固定间隔发送
+const STREAM_CHUNK_FLUSH_INTERVAL_MS = 45;
+const STREAM_CHUNK_FLUSH_MIN_CHARS = 48;
 
 function isCompanionMode(value: unknown): value is CompanionMode {
   return value === "articles" || value === "author" || value === "free";
@@ -170,6 +173,17 @@ export async function POST(request: NextRequest) {
     async start(controller) {
       // controller.close 可能同时由 abort/finally 触发，使用标记防止重复 close
       let closed = false;
+      // 暂存尚未下发的增量 chunk，避免每个 token 都发一次 SSE 事件
+      let bufferedChunk = "";
+      let chunkFlushTimer: ReturnType<typeof setTimeout> | null = null;
+
+      const clearChunkFlushTimer = () => {
+        if (chunkFlushTimer === null) {
+          return;
+        }
+        clearTimeout(chunkFlushTimer);
+        chunkFlushTimer = null;
+      };
 
       /**
        * 统一关闭出口：
@@ -177,6 +191,7 @@ export async function POST(request: NextRequest) {
        * - 正常结束（finally）也会触发
        */
       const close = () => {
+        clearChunkFlushTimer();
         if (!closed) {
           closed = true;
           controller.close();
@@ -195,6 +210,25 @@ export async function POST(request: NextRequest) {
 
         // 每次 enqueue 一帧 SSE，前端会实时消费
         controller.enqueue(encoder.encode(formatSSEEvent(event, data)));
+      };
+
+      const flushBufferedChunk = () => {
+        clearChunkFlushTimer();
+        if (!bufferedChunk) {
+          return;
+        }
+        sendEvent("chunk", { content: bufferedChunk });
+        bufferedChunk = "";
+      };
+
+      const scheduleChunkFlush = () => {
+        if (chunkFlushTimer !== null || closed || request.signal.aborted) {
+          return;
+        }
+        chunkFlushTimer = setTimeout(() => {
+          chunkFlushTimer = null;
+          flushBufferedChunk();
+        }, STREAM_CHUNK_FLUSH_INTERVAL_MS);
       };
 
       const handleAbort = () => {
@@ -262,12 +296,21 @@ export async function POST(request: NextRequest) {
           },
           (chunk) => {
             streamedContent += chunk;
-            // 事件3：增量文本块（前端用来做打字机效果）
-            sendEvent("chunk", { content: chunk });
+            bufferedChunk += chunk;
+
+            if (bufferedChunk.length >= STREAM_CHUNK_FLUSH_MIN_CHARS) {
+              // 到达字符阈值立即发送，避免用户感知延迟
+              flushBufferedChunk();
+              return;
+            }
+
+            // 小 chunk 按固定间隔批量发送，减少 SSE 事件风暴
+            scheduleChunkFlush();
           }
         );
 
         // ===== E. 正常完成 =====
+        flushBufferedChunk();
         // 事件4：最终完成，返回完整文本与 token 消耗
         sendEvent("done", {
           // 理论上 response.content 与 streamedContent 一致，这里做一次兜底
@@ -278,6 +321,7 @@ export async function POST(request: NextRequest) {
       } catch (error) {
         // ===== F. 异常处理 =====
         if (!request.signal.aborted) {
+          flushBufferedChunk();
           console.error("AI 看板娘流式对话失败:", error);
           // 事件5：错误事件，前端会显示友好报错而不是直接中断
           sendEvent("error", { message: getErrorMessage(error) });
