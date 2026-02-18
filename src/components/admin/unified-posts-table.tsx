@@ -88,14 +88,14 @@ interface OptionItem {
 }
 
 interface TagListResponse {
-  tags?: Array<{ name?: unknown; color?: unknown }>;
+  tags?: Array<{ id?: unknown; name?: unknown; color?: unknown }>;
 }
 
 interface CategoryListResponse {
   categories?: Array<{ name?: unknown; color?: unknown }>;
 }
 
-type TableFilters = Record<string, string | string[] | undefined>;
+type TableFilters = Record<string, string | string[] | null | undefined>;
 
 interface UnifiedPostsTableProps {
   searchQuery?: string;
@@ -145,12 +145,15 @@ export default function UnifiedPostsTable({
         const data = (await response.json()) as TagListResponse;
         const tags = (data.tags || [])
           .filter(
-            (tag): tag is { name: string; color?: string } =>
-              typeof tag?.name === "string" && tag.name.trim().length > 0
+            (tag): tag is { id: string; name: string; color?: string } =>
+              typeof tag?.id === "string" &&
+              tag.id.trim().length > 0 &&
+              typeof tag?.name === "string" &&
+              tag.name.trim().length > 0
           )
           .map((tag) => ({
             label: tag.name,
-            value: tag.name,
+            value: tag.id,
             color: typeof tag.color === "string" ? tag.color : undefined,
           }));
         setAvailableTags(tags);
@@ -783,7 +786,7 @@ export default function UnifiedPostsTable({
         itemName={`选中的 ${selectedIds.length} 篇文章`}
       />
 
-      <ModernTable
+      <ModernTable<Post>
         data={posts}
         columns={columns}
         loading={loading}

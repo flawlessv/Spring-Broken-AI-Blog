@@ -27,9 +27,69 @@ interface Tag {
   };
 }
 
+interface TagApiItem {
+  id?: unknown;
+  name?: unknown;
+  slug?: unknown;
+  color?: unknown;
+  description?: unknown;
+  createdAt?: unknown;
+  updatedAt?: unknown;
+  stats?: {
+    totalPosts?: unknown;
+  };
+}
+
+interface TagsResponse {
+  tags?: TagApiItem[];
+}
+
 interface UnifiedTagsTableProps {
   onEdit?: (tag: Tag) => void;
   onCreate?: () => void;
+}
+
+function normalizeTag(tag: TagApiItem): Tag | null {
+  if (
+    typeof tag.id !== "string" ||
+    typeof tag.name !== "string" ||
+    typeof tag.slug !== "string"
+  ) {
+    return null;
+  }
+
+  if (tag.color !== undefined && typeof tag.color !== "string") {
+    return null;
+  }
+
+  if (tag.description !== undefined && typeof tag.description !== "string") {
+    return null;
+  }
+
+  const createdAt = tag.createdAt;
+  const updatedAt = tag.updatedAt;
+  const validCreatedAt =
+    typeof createdAt === "string" || createdAt instanceof Date;
+  const validUpdatedAt =
+    typeof updatedAt === "string" || updatedAt instanceof Date;
+
+  if (!validCreatedAt || !validUpdatedAt) {
+    return null;
+  }
+
+  return {
+    id: tag.id,
+    name: tag.name,
+    slug: tag.slug,
+    color: tag.color,
+    description: tag.description,
+    createdAt,
+    updatedAt,
+    _count: {
+      posts:
+        typeof tag.stats?.totalPosts === "number" ? tag.stats.totalPosts : 0,
+    },
+  };
 }
 
 export default function UnifiedTagsTable({
@@ -54,12 +114,11 @@ export default function UnifiedTagsTable({
         throw new Error("获取标签数据失败");
       }
 
-      const data = await response.json();
+      const data = (await response.json()) as TagsResponse;
       setTags(
-        (data.tags || []).map((t: any) => ({
-          ...t,
-          _count: { posts: t.stats?.totalPosts ?? 0 },
-        }))
+        (data.tags || [])
+          .map(normalizeTag)
+          .filter((tag): tag is Tag => tag !== null)
       );
       setError(null);
     } catch (err) {
@@ -95,7 +154,7 @@ export default function UnifiedTagsTable({
       } else {
         throw new Error("删除失败");
       }
-    } catch (error) {
+    } catch {
       toast({
         title: "删除失败",
         description: "请稍后重试",
@@ -118,7 +177,7 @@ export default function UnifiedTagsTable({
 
       setSelectedIds([]);
       await fetchTags();
-    } catch (error) {
+    } catch {
       toast({
         title: "批量删除失败",
         description: "请稍后重试",
@@ -238,7 +297,7 @@ export default function UnifiedTagsTable({
         itemName={`选中的 ${selectedIds.length} 个标签`}
       />
 
-      <ModernTable
+      <ModernTable<Tag>
         data={tags}
         columns={columns}
         loading={loading}

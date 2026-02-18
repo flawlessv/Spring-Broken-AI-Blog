@@ -6,17 +6,9 @@
  * 提供卡片式设计，支持搜索、选择、操作等功能
  */
 
-import { ReactNode, useState } from "react";
+import { type ComponentProps, type ReactNode, useState } from "react";
 import Link from "next/link";
-import {
-  Search,
-  Plus,
-  Trash2,
-  MoreHorizontal,
-  RefreshCw,
-  Filter,
-  X,
-} from "lucide-react";
+import { Search, Plus, MoreHorizontal, RefreshCw, Filter } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -28,54 +20,48 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { TableFilter } from "@/components/ui/table-filter";
+import {
+  TableFilter,
+  type TableFilterOption,
+  type TableFilterType,
+  type TableFilterValue,
+} from "@/components/ui/table-filter";
 import { Card, CardContent } from "@/components/ui/card";
 import { AdminLoading } from "@/components/ui/loading";
 import { DeleteConfirmDialog } from "@/components/ui/confirm-dialog";
-import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
-// 筛选器类型
-interface FilterOption {
-  label: string;
-  value: string;
-  color?: string;
-}
+type ActionVariant = "default" | "danger" | "warning" | "success";
+type TableFilters = Record<string, TableFilterValue>;
 
 interface ColumnFilter {
-  type: "select" | "multiselect" | "text" | "date";
-  options?: FilterOption[];
+  type: TableFilterType;
+  options?: TableFilterOption[];
   placeholder?: string;
-  onFilter?: (value: any) => void;
 }
 
-interface ModernTableColumn {
+interface ModernTableColumn<T> {
   key: string;
   title: string;
   width?: string;
   className?: string;
-  render?: (value: any, record: any) => ReactNode;
+  render?: (value: unknown, record: T) => ReactNode;
   filter?: ColumnFilter;
 }
 
-interface ModernTableAction {
+interface ModernTableAction<T> {
   key: string;
-  label: string | ((record: any) => string);
+  label: string | ((record: T) => string);
   icon?: ReactNode;
-  onClick: (record: any) => void;
+  onClick: (record: T) => void;
   className?: string;
-  variant?:
-    | "default"
-    | "danger"
-    | "warning"
-    | "success"
-    | ((record: any) => "default" | "danger" | "warning" | "success");
+  variant?: ActionVariant | ((record: T) => ActionVariant);
 }
 
-interface ModernTableProps<T = any> {
+interface ModernTableProps<T> {
   // 数据
   data: T[];
-  columns: ModernTableColumn[];
+  columns: ModernTableColumn<T>[];
 
   // 状态
   loading?: boolean;
@@ -88,7 +74,7 @@ interface ModernTableProps<T = any> {
 
   // 筛选
   filterable?: boolean;
-  onFilterChange?: (filters: Record<string, any>) => void;
+  onFilterChange?: (filters: TableFilters) => void;
 
   // 选择
   selectable?: boolean;
@@ -96,12 +82,12 @@ interface ModernTableProps<T = any> {
   onSelectionChange?: (selectedIds: string[]) => void;
 
   // 操作
-  actions?: ModernTableAction[];
+  actions?: ModernTableAction<T>[];
 
   // 新建按钮
   createButton?: {
     label: string;
-    href?: string;
+    href?: ComponentProps<typeof Link>["href"];
     onClick?: () => void;
     icon?: ReactNode;
   };
@@ -135,7 +121,7 @@ interface ModernTableProps<T = any> {
   onRetry?: () => void;
 }
 
-export function ModernTable<T = any>({
+export function ModernTable<T = unknown>({
   data,
   columns,
   loading = false,
@@ -160,16 +146,18 @@ export function ModernTable<T = any>({
 }: ModernTableProps<T>) {
   const [searchQuery, setSearchQuery] = useState("");
   const [deleteRecord, setDeleteRecord] = useState<T | null>(null);
-  const [filters, setFilters] = useState<Record<string, any>>({});
+  const [deleteAction, setDeleteAction] = useState<ModernTableAction<T> | null>(
+    null
+  );
+  const [filters, setFilters] = useState<TableFilters>({});
   const [openPopovers, setOpenPopovers] = useState<Record<string, boolean>>({});
-  const { toast } = useToast();
 
   const handleSearch = (query: string) => {
     setSearchQuery(query);
     onSearch?.(query);
   };
 
-  const handleFilterChange = (columnKey: string, value: any) => {
+  const handleFilterChange = (columnKey: string, value: TableFilterValue) => {
     const newFilters = { ...filters, [columnKey]: value };
     setFilters(newFilters);
     onFilterChange?.(newFilters);
@@ -182,11 +170,6 @@ export function ModernTable<T = any>({
     onFilterChange?.(newFilters);
   };
 
-  const clearAllFilters = () => {
-    setFilters({});
-    onFilterChange?.({});
-  };
-
   const openPopover = (columnKey: string) => {
     setOpenPopovers((prev) => ({ ...prev, [columnKey]: true }));
   };
@@ -195,33 +178,47 @@ export function ModernTable<T = any>({
     setOpenPopovers((prev) => ({ ...prev, [columnKey]: false }));
   };
 
-  const handleSelectAll = (checked: boolean) => {
-    const newSelection = checked ? data.map(getRecordId) : [];
+  const handleSelectAll = (checked: boolean | "indeterminate") => {
+    const newSelection = checked === true ? data.map(getRecordId) : [];
     onSelectionChange?.(newSelection);
   };
 
-  const handleSelectRecord = (recordId: string, checked: boolean) => {
-    const newSelection = checked
-      ? [...selectedIds, recordId]
-      : selectedIds.filter((id) => id !== recordId);
+  const handleSelectRecord = (
+    recordId: string,
+    checked: boolean | "indeterminate"
+  ) => {
+    const newSelection =
+      checked === true
+        ? Array.from(new Set([...selectedIds, recordId]))
+        : selectedIds.filter((id) => id !== recordId);
     onSelectionChange?.(newSelection);
   };
 
-  const handleAction = (action: ModernTableAction, record: T) => {
-    if (action.variant === "danger") {
+  const resolveActionVariant = (
+    action: ModernTableAction<T>,
+    record: T
+  ): ActionVariant => {
+    if (typeof action.variant === "function") {
+      return action.variant(record);
+    }
+    return action.variant ?? "default";
+  };
+
+  const handleAction = (action: ModernTableAction<T>, record: T) => {
+    if (resolveActionVariant(action, record) === "danger") {
       setDeleteRecord(record);
+      setDeleteAction(action);
     } else {
+      setDeleteAction(null);
       action.onClick(record);
     }
   };
 
   const confirmDelete = () => {
-    if (deleteRecord) {
-      const deleteAction = actions.find((a) => a.variant === "danger");
-      if (deleteAction) {
-        deleteAction.onClick(deleteRecord);
-      }
+    if (deleteRecord && deleteAction) {
+      deleteAction.onClick(deleteRecord);
       setDeleteRecord(null);
+      setDeleteAction(null);
     }
   };
 
@@ -323,7 +320,7 @@ export function ModernTable<T = any>({
           {/* 新建按钮 */}
           {createButton &&
             (createButton.href ? (
-              <Link href={createButton.href as any}>
+              <Link href={createButton.href}>
                 <Button className="bg-black dark:bg-white text-white dark:text-black hover:opacity-90 rounded-xl shadow-md border-0">
                   {createButton.icon || <Plus className="mr-2 h-4 w-4" />}
                   {createButton.label}
@@ -360,7 +357,7 @@ export function ModernTable<T = any>({
             {!searchQuery &&
               createButton &&
               (createButton.href ? (
-                <Link href={createButton.href as any}>
+                <Link href={createButton.href}>
                   <Button className="bg-black dark:bg-white text-white dark:text-black hover:opacity-90 rounded-xl shadow-md border-0">
                     {createButton.icon || <Plus className="mr-2 h-4 w-4" />}
                     {createButton.label}
@@ -454,9 +451,9 @@ export function ModernTable<T = any>({
                         <div>
                           <Checkbox
                             checked={selectedIds.includes(recordId)}
-                            onCheckedChange={(checked) =>
-                              handleSelectRecord(recordId, checked as boolean)
-                            }
+                            onCheckedChange={(checked) => {
+                              handleSelectRecord(recordId, checked);
+                            }}
                             className="rounded-md"
                           />
                         </div>
@@ -473,10 +470,17 @@ export function ModernTable<T = any>({
                         >
                           {column.render
                             ? column.render(
-                                record[column.key as keyof T],
+                                (record as Record<string, unknown>)[column.key],
                                 record
                               )
-                            : String(record[column.key as keyof T] || "")}
+                            : (() => {
+                                const cellValue = (
+                                  record as Record<string, unknown>
+                                )[column.key];
+                                return cellValue == null
+                                  ? ""
+                                  : String(cellValue);
+                              })()}
                         </div>
                       ))}
 
@@ -499,35 +503,37 @@ export function ModernTable<T = any>({
                                 操作
                               </DropdownMenuLabel>
                               <DropdownMenuSeparator />
-                              {actions.map((action, index) => (
-                                <DropdownMenuItem
-                                  key={action.key}
-                                  onClick={() => handleAction(action, record)}
-                                  className={cn(
-                                    "rounded-lg",
-                                    (typeof action.variant === "function"
-                                      ? action.variant(record)
-                                      : action.variant) === "danger" &&
-                                      "text-red-600 dark:text-red-400",
-                                    (typeof action.variant === "function"
-                                      ? action.variant(record)
-                                      : action.variant) === "warning" &&
-                                      "text-orange-600 dark:text-orange-400",
-                                    (typeof action.variant === "function"
-                                      ? action.variant(record)
-                                      : action.variant) === "success" &&
-                                      "text-green-600 dark:text-green-400",
-                                    action.className
-                                  )}
-                                >
-                                  {action.icon && (
-                                    <span className="mr-2">{action.icon}</span>
-                                  )}
-                                  {typeof action.label === "function"
-                                    ? action.label(record)
-                                    : action.label}
-                                </DropdownMenuItem>
-                              ))}
+                              {actions.map((action) => {
+                                const actionVariant = resolveActionVariant(
+                                  action,
+                                  record
+                                );
+                                return (
+                                  <DropdownMenuItem
+                                    key={action.key}
+                                    onClick={() => handleAction(action, record)}
+                                    className={cn(
+                                      "rounded-lg",
+                                      actionVariant === "danger" &&
+                                        "text-red-600 dark:text-red-400",
+                                      actionVariant === "warning" &&
+                                        "text-orange-600 dark:text-orange-400",
+                                      actionVariant === "success" &&
+                                        "text-green-600 dark:text-green-400",
+                                      action.className
+                                    )}
+                                  >
+                                    {action.icon && (
+                                      <span className="mr-2">
+                                        {action.icon}
+                                      </span>
+                                    )}
+                                    {typeof action.label === "function"
+                                      ? action.label(record)
+                                      : action.label}
+                                  </DropdownMenuItem>
+                                );
+                              })}
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </div>
@@ -577,7 +583,10 @@ export function ModernTable<T = any>({
       {/* 删除确认对话框 */}
       <DeleteConfirmDialog
         open={!!deleteRecord}
-        onClose={() => setDeleteRecord(null)}
+        onClose={() => {
+          setDeleteRecord(null);
+          setDeleteAction(null);
+        }}
         onConfirm={confirmDelete}
         itemName="记录"
         itemType="数据"

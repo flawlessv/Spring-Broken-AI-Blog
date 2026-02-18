@@ -173,17 +173,15 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // 标签筛选（支持多选）
+    // 标签筛选（支持多选，按标签 ID）
     if (query.tagIds && query.tagIds !== STATUS_ALL) {
-      const tagNames = parseCsvParam(query.tagIds);
-      if (tagNames.length > 0) {
+      const tagIds = parseCsvParam(query.tagIds);
+      if (tagIds.length > 0) {
         andClauses.push({
           tags: {
             some: {
-              tag: {
-                name: {
-                  in: tagNames,
-                },
+              tagId: {
+                in: tagIds,
               },
             },
           },
