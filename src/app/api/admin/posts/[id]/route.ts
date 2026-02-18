@@ -42,12 +42,23 @@ const patchPostSchema = z.object({
   coverImage: z.string().optional().or(z.literal("")),
 });
 
+function normalizeCoverImage(
+  value: string | undefined
+): string | null | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  const trimmedValue = value.trim();
+  return trimmedValue === "" ? null : trimmedValue;
+}
+
 /**
  * GET /api/admin/posts/[id]
  * 获取单个文章详情
  */
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
@@ -156,9 +167,24 @@ export async function PUT(
     if (data.slug !== undefined) updateData.slug = data.slug;
     if (data.content !== undefined) updateData.content = data.content;
     if (data.excerpt !== undefined) updateData.excerpt = data.excerpt;
-    if (data.coverImage !== undefined) updateData.coverImage = data.coverImage;
-    if (data.categoryId !== undefined)
+    if (data.coverImage !== undefined) {
+      updateData.coverImage = normalizeCoverImage(data.coverImage);
+    }
+    if (data.categoryId !== undefined) {
+      if (data.categoryId) {
+        const category = await prisma.category.findUnique({
+          where: { id: data.categoryId },
+          select: { id: true },
+        });
+        if (!category) {
+          return NextResponse.json(
+            { error: "所选分类不存在" },
+            { status: 400 }
+          );
+        }
+      }
       updateData.categoryId = data.categoryId || null;
+    }
 
     if (data.published !== undefined) {
       updateData.published = data.published;
@@ -201,6 +227,10 @@ export async function PUT(
             }
           : {}),
       };
+    }
+
+    if (Object.keys(updateData).length === 0) {
+      return NextResponse.json({ error: "没有可更新的字段" }, { status: 400 });
     }
 
     // 更新文章
@@ -280,7 +310,11 @@ export async function PATCH(
 
     // 处理封面图变更
     if (body.coverImage !== undefined) {
-      updateData.coverImage = body.coverImage;
+      updateData.coverImage = normalizeCoverImage(body.coverImage);
+    }
+
+    if (Object.keys(updateData).length === 0) {
+      return NextResponse.json({ error: "没有可更新的字段" }, { status: 400 });
     }
 
     const updatedPost = await prisma.post.update({
@@ -308,7 +342,7 @@ export async function PATCH(
  * 删除文章
  */
 export async function DELETE(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {

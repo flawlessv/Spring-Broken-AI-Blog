@@ -12,27 +12,71 @@ import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import { z } from "zod";
 
+const STATUS_ALL = "all";
+const DEFAULT_PAGE = 1;
+const DEFAULT_LIMIT = 10;
+const MAX_LIMIT = 100;
+
+const parsePositiveIntParam = (fallback: number, max?: number) =>
+  z
+    .string()
+    .optional()
+    .transform((value) => {
+      if (!value) {
+        return fallback;
+      }
+
+      const parsed = Number.parseInt(value, 10);
+      if (!Number.isFinite(parsed) || parsed <= 0) {
+        return fallback;
+      }
+
+      return max ? Math.min(parsed, max) : parsed;
+    });
+
+const normalizeNullableParam = z
+  .string()
+  .optional()
+  .nullable()
+  .transform((value) => {
+    const trimmed = value?.trim();
+    return trimmed ? trimmed : null;
+  });
+
+const createPostSchema = z.object({
+  title: z.string().trim().min(1, "标题不能为空"),
+  slug: z.string().trim().min(1, "URL slug不能为空"),
+  content: z.string().trim().min(1, "内容不能为空"),
+  excerpt: z.string().trim().optional(),
+  coverImage: z.string().trim().optional(),
+  published: z.boolean().default(false),
+  featured: z.boolean().default(false),
+  categoryId: z.string().trim().optional(),
+  tags: z.array(z.string().trim()).optional(),
+});
+
 // 查询参数验证schema
 const querySchema = z.object({
-  page: z
-    .string()
-    .optional()
-    .transform((val) => (val ? parseInt(val) : 1)),
-  limit: z
-    .string()
-    .optional()
-    .transform((val) => (val ? parseInt(val) : 10)),
-  search: z.string().optional().nullable(),
-  status: z.string().optional().nullable(), // 支持逗号分隔的多个状态
-  categoryId: z.string().optional().nullable(),
-  categoryNames: z.string().optional().nullable(), // 分类名称筛选：逗号分隔的分类名称列表
-  tagIds: z.string().optional().nullable(), // 标签过滤：逗号分隔的标签ID列表
+  page: parsePositiveIntParam(DEFAULT_PAGE),
+  limit: parsePositiveIntParam(DEFAULT_LIMIT, MAX_LIMIT),
+  search: normalizeNullableParam,
+  status: normalizeNullableParam, // 支持逗号分隔的多个状态
+  categoryId: normalizeNullableParam,
+  categoryNames: normalizeNullableParam, // 分类名称筛选：逗号分隔的分类名称列表
+  tagIds: normalizeNullableParam, // 标签过滤：逗号分隔的标签ID列表
   sortBy: z
     .enum(["createdAt", "updatedAt", "views", "title"])
     .optional()
     .default("updatedAt"),
   sortOrder: z.enum(["asc", "desc"]).optional().default("desc"),
 });
+
+function parseCsvParam(value: string): string[] {
+  return value
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
 
 /**
  * GET /api/admin/posts
@@ -49,10 +93,10 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const query = querySchema.parse({
-      page: searchParams.get("page"),
-      limit: searchParams.get("limit"),
+      page: searchParams.get("page") ?? undefined,
+      limit: searchParams.get("limit") ?? undefined,
       search: searchParams.get("search"),
-      status: searchParams.get("status") || "all",
+      status: searchParams.get("status"),
       categoryId: searchParams.get("categoryId"),
       categoryNames: searchParams.get("categoryNames"),
       tagIds: searchParams.get("tagIds"),
@@ -76,8 +120,8 @@ export async function GET(request: NextRequest) {
     }
 
     // 状态筛选（支持多个状态）
-    if (query.status && query.status !== "all") {
-      const statusArray = query.status.split(",").filter(Boolean);
+    if (query.status && query.status !== STATUS_ALL) {
+      const statusArray = parseCsvParam(query.status);
       if (statusArray.length > 0) {
         const statusConditions: Prisma.PostWhereInput[] = [];
 
@@ -111,13 +155,13 @@ export async function GET(request: NextRequest) {
     }
 
     // 分类筛选
-    if (query.categoryId && query.categoryId !== "all") {
+    if (query.categoryId && query.categoryId !== STATUS_ALL) {
       where.categoryId = query.categoryId;
     }
 
     // 分类名称筛选（支持多选）
-    if (query.categoryNames && query.categoryNames !== "all") {
-      const categoryNames = query.categoryNames.split(",").filter(Boolean);
+    if (query.categoryNames && query.categoryNames !== STATUS_ALL) {
+      const categoryNames = parseCsvParam(query.categoryNames);
       if (categoryNames.length > 0) {
         andClauses.push({
           category: {
@@ -130,8 +174,8 @@ export async function GET(request: NextRequest) {
     }
 
     // 标签筛选（支持多选）
-    if (query.tagIds && query.tagIds !== "all") {
-      const tagNames = query.tagIds.split(",").filter(Boolean);
+    if (query.tagIds && query.tagIds !== STATUS_ALL) {
+      const tagNames = parseCsvParam(query.tagIds);
       if (tagNames.length > 0) {
         andClauses.push({
           tags: {
@@ -217,6 +261,14 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error("获取文章列表失败:", error);
+
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { error: "请求参数无效", details: error.issues },
+        { status: 400 }
+      );
+    }
+
     return NextResponse.json({ error: "服务器内部错误" }, { status: 500 });
   }
 }
@@ -235,25 +287,15 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
 
-    // 创建文章的验证schema
-    const createPostSchema = z.object({
-      title: z.string().min(1, "标题不能为空"),
-      slug: z.string().min(1, "URL slug不能为空"),
-      content: z.string().min(1, "内容不能为空"),
-      excerpt: z.string().optional(),
-      coverImage: z.string().optional(),
-      published: z.boolean().default(false),
-      featured: z.boolean().default(false),
-      categoryId: z.string().optional(),
-      tags: z.array(z.string()).optional(),
-    });
-
     const data = createPostSchema.parse(body);
+    const categoryId = data.categoryId || null;
+    const uniqueTagIds = Array.from(new Set(data.tags ?? []));
+    const coverImage = data.coverImage || null;
 
     // 验证分类 ID 是否存在
-    if (data.categoryId) {
+    if (categoryId) {
       const category = await prisma.category.findUnique({
-        where: { id: data.categoryId },
+        where: { id: categoryId },
       });
       if (!category) {
         return NextResponse.json({ error: "所选分类不存在" }, { status: 400 });
@@ -261,11 +303,11 @@ export async function POST(request: NextRequest) {
     }
 
     // 验证标签 ID 是否存在
-    if (data.tags && data.tags.length > 0) {
+    if (uniqueTagIds.length > 0) {
       const tags = await prisma.tag.findMany({
-        where: { id: { in: data.tags } },
+        where: { id: { in: uniqueTagIds } },
       });
-      if (tags.length !== data.tags.length) {
+      if (tags.length !== uniqueTagIds.length) {
         return NextResponse.json({ error: "部分标签不存在" }, { status: 400 });
       }
     }
@@ -300,15 +342,15 @@ export async function POST(request: NextRequest) {
         slug: data.slug,
         content: data.content,
         excerpt: data.excerpt,
-        coverImage: data.coverImage,
+        coverImage,
         published: data.published,
         featured: data.featured,
         publishedAt: data.published ? new Date() : null,
         authorId: session.user.id,
-        categoryId: data.categoryId || null,
-        tags: data.tags
+        categoryId,
+        tags: uniqueTagIds.length
           ? {
-              create: data.tags.map((tagId) => ({
+              create: uniqueTagIds.map((tagId) => ({
                 tag: { connect: { id: tagId } },
               })),
             }

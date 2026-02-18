@@ -7,6 +7,7 @@
 
 import { useState, useEffect, useMemo, useCallback } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { zhCN } from "date-fns/locale";
 import {
@@ -15,7 +16,6 @@ import {
   Trash2,
   Star,
   Clock,
-  User,
   Calendar,
   FileText,
   Plus,
@@ -81,6 +81,22 @@ interface PostsResponse {
   };
 }
 
+interface OptionItem {
+  label: string;
+  value: string;
+  color?: string;
+}
+
+interface TagListResponse {
+  tags?: Array<{ name?: unknown; color?: unknown }>;
+}
+
+interface CategoryListResponse {
+  categories?: Array<{ name?: unknown; color?: unknown }>;
+}
+
+type TableFilters = Record<string, string | string[] | undefined>;
+
 interface UnifiedPostsTableProps {
   searchQuery?: string;
   statusFilter?: string;
@@ -104,13 +120,11 @@ export default function UnifiedPostsTable({
   const [exporting, setExporting] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [isBatchDeleting, setIsBatchDeleting] = useState(false);
-  const [tableFilters, setTableFilters] = useState<Record<string, any>>({});
-  const [availableTags, setAvailableTags] = useState<
-    { label: string; value: string; color?: string }[]
-  >([]);
-  const [availableCategories, setAvailableCategories] = useState<
-    { label: string; value: string; color?: string }[]
-  >([]);
+  const [tableFilters, setTableFilters] = useState<TableFilters>({});
+  const [availableTags, setAvailableTags] = useState<OptionItem[]>([]);
+  const [availableCategories, setAvailableCategories] = useState<OptionItem[]>(
+    []
+  );
   const [pagination, setPagination] = useState({
     page: 1,
     limit: 10,
@@ -121,21 +135,28 @@ export default function UnifiedPostsTable({
   });
 
   const { toast } = useToast();
+  const router = useRouter();
 
   // 优化：使用useCallback缓存事件处理函数
   const fetchAvailableTags = useCallback(async () => {
     try {
       const response = await fetch("/api/admin/tags");
       if (response.ok) {
-        const data = await response.json();
-        const tags = (data.tags || []).map((tag: any) => ({
-          label: tag.name,
-          value: tag.name,
-        }));
+        const data = (await response.json()) as TagListResponse;
+        const tags = (data.tags || [])
+          .filter(
+            (tag): tag is { name: string; color?: string } =>
+              typeof tag?.name === "string" && tag.name.trim().length > 0
+          )
+          .map((tag) => ({
+            label: tag.name,
+            value: tag.name,
+            color: typeof tag.color === "string" ? tag.color : undefined,
+          }));
         setAvailableTags(tags);
       }
-    } catch (error) {
-      console.error("获取标签失败:", error);
+    } catch (fetchError) {
+      console.error("获取标签失败:", fetchError);
     }
   }, []);
 
@@ -143,15 +164,23 @@ export default function UnifiedPostsTable({
     try {
       const response = await fetch("/api/admin/categories");
       if (response.ok) {
-        const data = await response.json();
-        const categories = (data.categories || []).map((category: any) => ({
-          label: category.name,
-          value: category.name,
-        }));
+        const data = (await response.json()) as CategoryListResponse;
+        const categories = (data.categories || [])
+          .filter(
+            (category): category is { name: string; color?: string } =>
+              typeof category?.name === "string" &&
+              category.name.trim().length > 0
+          )
+          .map((category) => ({
+            label: category.name,
+            value: category.name,
+            color:
+              typeof category.color === "string" ? category.color : undefined,
+          }));
         setAvailableCategories(categories);
       }
-    } catch (error) {
-      console.error("获取分类失败:", error);
+    } catch (fetchError) {
+      console.error("获取分类失败:", fetchError);
     }
   }, []);
 
@@ -172,7 +201,10 @@ export default function UnifiedPostsTable({
         params.set("categoryId", categoryFilter);
 
       // 处理表头筛选
-      if (tableFilters.title && tableFilters.title.trim()) {
+      if (
+        typeof tableFilters.title === "string" &&
+        tableFilters.title.trim().length > 0
+      ) {
         params.set("search", tableFilters.title.trim());
       }
       if (
@@ -223,7 +255,7 @@ export default function UnifiedPostsTable({
   ]);
 
   // 处理表头筛选
-  const handleTableFilters = useCallback((filters: Record<string, any>) => {
+  const handleTableFilters = useCallback((filters: TableFilters) => {
     setTableFilters(filters);
     setPagination((prev) => ({ ...prev, page: 1 })); // 重置到第一页
   }, []);
@@ -297,7 +329,7 @@ export default function UnifiedPostsTable({
         } else {
           throw new Error("操作失败");
         }
-      } catch (error) {
+      } catch {
         toast({
           title: "操作失败",
           description: "请稍后重试",
@@ -326,7 +358,7 @@ export default function UnifiedPostsTable({
         } else {
           throw new Error("操作失败");
         }
-      } catch (error) {
+      } catch {
         toast({
           title: "操作失败",
           description: "请稍后重试",
@@ -354,7 +386,7 @@ export default function UnifiedPostsTable({
         } else {
           throw new Error("删除失败");
         }
-      } catch (error) {
+      } catch {
         toast({
           title: "删除失败",
           description: "请稍后重试",
@@ -402,7 +434,7 @@ export default function UnifiedPostsTable({
         setSelectedIds([]);
         onSelectionChange?.([]);
         await fetchPosts();
-      } catch (error) {
+      } catch {
         toast({
           title: "批量删除失败",
           description: "请稍后重试",
@@ -492,9 +524,6 @@ export default function UnifiedPostsTable({
           ? {
               type: "text" as const,
               placeholder: "搜索文章标题...",
-              onFilter: (value: string) => {
-                console.log("Title filter:", value);
-              },
             }
           : undefined,
         render: (_: unknown, post: Post) => (
@@ -529,9 +558,6 @@ export default function UnifiedPostsTable({
               type: "multiselect" as const,
               options: availableCategories,
               placeholder: "筛选分类",
-              onFilter: (value: string) => {
-                console.log("Category filter:", value);
-              },
             }
           : undefined,
         render: (_: unknown, post: Post) => (
@@ -557,9 +583,6 @@ export default function UnifiedPostsTable({
               type: "multiselect" as const,
               options: availableTags,
               placeholder: "筛选标签",
-              onFilter: (value: string) => {
-                console.log("Tags filter:", value);
-              },
             }
           : undefined,
         render: (_: unknown, post: Post) => (
@@ -596,9 +619,6 @@ export default function UnifiedPostsTable({
               type: "multiselect" as const,
               options: statusOptions,
               placeholder: "筛选状态",
-              onFilter: (value: string) => {
-                console.log("Status filter:", value);
-              },
             }
           : undefined,
         render: (_: unknown, post: Post) => getStatusBadge(post),
@@ -646,9 +666,7 @@ export default function UnifiedPostsTable({
               variant="ghost"
               size="sm"
               className="h-8 px-3 text-gray-600 dark:text-gray-400 hover:text-black dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800"
-              onClick={() =>
-                (window.location.href = `/admin/posts/${post.id}/edit`)
-              }
+              onClick={() => router.push(`/admin/posts/${post.id}/edit`)}
             >
               <Edit className="h-4 w-4 mr-1" />
               编辑
@@ -711,6 +729,7 @@ export default function UnifiedPostsTable({
       getStatusBadge,
       handleTogglePublish,
       handleToggleFeature,
+      router,
     ]
   );
 
@@ -773,9 +792,7 @@ export default function UnifiedPostsTable({
         searchPlaceholder="搜索文章标题..."
         onSearch={handleSearch}
         filterable={enableTableFilters}
-        onFilterChange={(filters) => {
-          handleTableFilters(filters);
-        }}
+        onFilterChange={handleTableFilters}
         selectable={true}
         selectedIds={selectedIds}
         onSelectionChange={(ids) => {

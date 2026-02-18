@@ -15,6 +15,8 @@ import { SeasonalBackground } from "@/components/home/seasonal-background";
 import { FlowerClick } from "@/components/home/flower-click";
 import { OptimizedAvatar } from "@/components/optimized/optimized-image";
 
+const SITE_NAME = "Spring Broken AI Blog";
+
 interface Post {
   id: string;
   title: string;
@@ -85,13 +87,13 @@ export async function generateMetadata({
 
   if (!post) {
     return {
-      title: "文章不存在 - Spring Broken AI Blog Blog",
+      title: `文章不存在 - ${SITE_NAME}`,
     };
   }
 
   return {
-    title: `${post.title} - Spring Broken AI Blog Blog`,
-    description: post.excerpt || "Spring Broken AI Blog Blog 文章详情",
+    title: `${post.title} - ${SITE_NAME}`,
+    description: post.excerpt || `${SITE_NAME} 文章详情`,
   };
 }
 
@@ -127,7 +129,7 @@ export default async function PostPage({
               <span>返回首页</span>
             </Link>
           }
-          extraButtons={<></>}
+          extraButtons={null}
         >
           <EssayPostView
             title={post.title}
