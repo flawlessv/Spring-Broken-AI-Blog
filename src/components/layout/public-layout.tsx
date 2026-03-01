@@ -4,7 +4,6 @@ import { ReactNode, useState, useEffect } from "react";
 import Link from "next/link";
 import { LayoutDashboard, Menu, X } from "lucide-react";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
-import AnimeAssistantChat from "@/components/chat/anime-assistant-chat";
 import { cn } from "@/lib/utils";
 
 interface PublicLayoutProps {
@@ -103,8 +102,6 @@ export default function PublicLayout({
           </div>
         </div>
       )}
-
-      <AnimeAssistantChat />
 
       {/* 极简底部 */}
       <footer className="border-t border-border/40 bg-background mt-auto">

@@ -102,7 +102,8 @@ const MAX_HISTORY_MESSAGES = 12;
 const CHUNK_FLUSH_INTERVAL_MS = 33;
 const CHUNK_FLUSH_MIN_CHARS = 24;
 const LIVE2D_ENABLED =
-  (process.env.NEXT_PUBLIC_COMPANION_LIVE2D_ENABLED || "true")
+  // 默认关闭外链 Live2D，避免第三方脚本在路由切换阶段干扰 React 的 DOM 卸载
+  (process.env.NEXT_PUBLIC_COMPANION_LIVE2D_ENABLED || "false")
     .trim()
     .toLowerCase() !== "false";
 const LIVE2D_SCRIPT_URL =
@@ -318,6 +319,8 @@ function AssistantMarkdown({ content }: { content: string }) {
 
 export default function AnimeAssistantChat() {
   const pathname = usePathname();
+  const isPublicRoute =
+    !!pathname && !pathname.startsWith("/admin") && pathname !== "/login";
   // 是否展开聊天面板
   const [open, setOpen] = useState(false);
   // 当前对话模式：文章 / 作者 / 自由聊
@@ -352,6 +355,14 @@ export default function AnimeAssistantChat() {
   const currentPostSlugRef = useRef<string | null>(null);
 
   const currentPostSlug = getPostSlugFromPathname(pathname || "");
+
+  useEffect(() => {
+    if (isPublicRoute) {
+      return;
+    }
+    // 离开前台页面时强制收起，避免后台页保留悬浮态
+    setOpen(false);
+  }, [isPublicRoute]);
 
   const quickStartOptions = useMemo(() => {
     if (!currentPostSlug) {
@@ -433,6 +444,12 @@ export default function AnimeAssistantChat() {
 
   useEffect(() => {
     // 进入文章详情页时，预取当前文章内容作为对话上下文
+    if (!isPublicRoute) {
+      currentPostSlugRef.current = null;
+      setCurrentArticleContext(null);
+      return;
+    }
+
     if (!currentPostSlug) {
       currentPostSlugRef.current = null;
       setCurrentArticleContext(null);
@@ -496,10 +513,14 @@ export default function AnimeAssistantChat() {
     return () => {
       active = false;
     };
-  }, [currentPostSlug]);
+  }, [currentPostSlug, isPublicRoute]);
 
   useEffect(() => {
     // 初始化 Live2D 看板娘：桌面端启用，移动端禁用
+    if (!isPublicRoute) {
+      return;
+    }
+
     if (typeof window === "undefined") {
       return;
     }
@@ -648,7 +669,7 @@ export default function AnimeAssistantChat() {
       removeLoadListener?.();
       removeErrorListener?.();
     };
-  }, []);
+  }, [isPublicRoute]);
 
   useEffect(() => {
     // 面板打开时，只要消息有变化就滚动到底部
@@ -932,6 +953,10 @@ export default function AnimeAssistantChat() {
     setInput(option.prompt);
     void sendMessage({ content: option.prompt, mode: option.mode });
   };
+
+  if (!isPublicRoute) {
+    return null;
+  }
 
   return (
     <div

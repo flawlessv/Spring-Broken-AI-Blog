@@ -11,8 +11,6 @@ import MarkdownRenderer from "@/components/markdown/markdown-renderer";
 import { ImmersiveReaderToggle } from "@/components/immersive-reader";
 import RelatedPosts from "@/components/posts/related-posts";
 import EssayPostView from "@/components/posts/essay-post-view";
-import { SeasonalBackground } from "@/components/home/seasonal-background";
-import { FlowerClick } from "@/components/home/flower-click";
 import { OptimizedAvatar } from "@/components/optimized/optimized-image";
 
 const SITE_NAME = "Spring Broken AI Blog";
@@ -116,189 +114,177 @@ export default async function PostPage({
   // 随笔风格使用专门的模板
   if (isEssayPost) {
     return (
-      <>
-        <SeasonalBackground />
-        <FlowerClick />
-        <PublicLayout
-          leftButtons={
-            <Link
-              href="/"
-              className="inline-flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
-            >
-              <ChevronLeft className="w-4 h-4" />
-              <span>返回首页</span>
-            </Link>
-          }
-          extraButtons={null}
-        >
-          <EssayPostView
-            title={post.title}
-            content={post.content || "暂无内容"}
-            createdAt={post.createdAt}
-            updatedAt={post.updatedAt}
-            publishedAt={post.publishedAt}
-            author={post.author}
-          />
-        </PublicLayout>
-      </>
+      <PublicLayout
+        leftButtons={
+          <Link
+            href="/"
+            className="inline-flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
+          >
+            <ChevronLeft className="w-4 h-4" />
+            <span>返回首页</span>
+          </Link>
+        }
+        extraButtons={null}
+      >
+        <EssayPostView
+          title={post.title}
+          content={post.content || "暂无内容"}
+          createdAt={post.createdAt}
+          updatedAt={post.updatedAt}
+          publishedAt={post.publishedAt}
+          author={post.author}
+        />
+      </PublicLayout>
     );
   }
 
   // 默认的文章样式
   return (
-    <>
-      {/* 季节背景效果 */}
-      <SeasonalBackground />
+    <PublicLayout
+      leftButtons={
+        <Link
+          href="/"
+          className="inline-flex items-center gap-2 px-4 py-1.5 border-[2px] border-black dark:border-white rounded-full text-sm font-bold hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black transition-all duration-300 group"
+        >
+          <ChevronLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
+          <span>返回首页</span>
+        </Link>
+      }
+      extraButtons={
+        <ImmersiveReaderToggle
+          title={post.title}
+          content={post.content || "暂无内容"}
+          author={post.author}
+          createdAt={post.createdAt}
+        />
+      }
+    >
+      <div className="w-full max-w-5xl mx-auto px-2 sm:px-4">
+        {/* 文章头部 */}
+        <header className="mb-12 pt-8">
+          {/* 分类和标签 */}
+          {(post.categories.length > 0 || post.tags.length > 0) && (
+            <div className="flex flex-wrap gap-2 mb-6">
+              {post.categories.map((cat) => (
+                <span
+                  key={cat.id}
+                  className="px-3 py-1 bg-black dark:bg-white text-white dark:text-black text-[10px] font-bold rounded-full uppercase tracking-wider"
+                >
+                  {cat.name}
+                </span>
+              ))}
+              {post.tags.map((tag) => (
+                <span
+                  key={tag.id}
+                  className="px-3 py-1 border-2 border-black dark:border-white text-black dark:text-white text-[10px] font-bold rounded-full uppercase tracking-wider"
+                >
+                  #{tag.name}
+                </span>
+              ))}
+            </div>
+          )}
 
-      {/* 点击小红花效果 */}
-      <FlowerClick />
-
-      <PublicLayout
-        leftButtons={
-          <Link
-            href="/"
-            className="inline-flex items-center gap-2 px-4 py-1.5 border-[2px] border-black dark:border-white rounded-full text-sm font-bold hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black transition-all duration-300 group"
-          >
-            <ChevronLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
-            <span>返回首页</span>
-          </Link>
-        }
-        extraButtons={
-          <ImmersiveReaderToggle
-            title={post.title}
-            content={post.content || "暂无内容"}
-            author={post.author}
-            createdAt={post.createdAt}
-          />
-        }
-      >
-        <div className="w-full max-w-5xl mx-auto px-2 sm:px-4">
-          {/* 文章头部 */}
-          <header className="mb-12 pt-8">
-            {/* 分类和标签 */}
-            {(post.categories.length > 0 || post.tags.length > 0) && (
-              <div className="flex flex-wrap gap-2 mb-6">
-                {post.categories.map((cat) => (
-                  <span
-                    key={cat.id}
-                    className="px-3 py-1 bg-black dark:bg-white text-white dark:text-black text-[10px] font-bold rounded-full uppercase tracking-wider"
-                  >
-                    {cat.name}
-                  </span>
-                ))}
-                {post.tags.map((tag) => (
-                  <span
-                    key={tag.id}
-                    className="px-3 py-1 border-2 border-black dark:border-white text-black dark:text-white text-[10px] font-bold rounded-full uppercase tracking-wider"
-                  >
-                    #{tag.name}
-                  </span>
-                ))}
-              </div>
+          {/* 标题 */}
+          <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-black dark:text-white mb-8 leading-[1.1] tracking-tight font-sans">
+            {post.title}
+            {post.featured && (
+              <span className="ml-4 inline-flex items-center px-3 py-1 rounded-full text-xs font-black bg-yellow-400 text-black uppercase tracking-tighter align-middle">
+                Featured
+              </span>
             )}
+          </h1>
 
-            {/* 标题 */}
-            <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-black dark:text-white mb-8 leading-[1.1] tracking-tight font-sans">
-              {post.title}
-              {post.featured && (
-                <span className="ml-4 inline-flex items-center px-3 py-1 rounded-full text-xs font-black bg-yellow-400 text-black uppercase tracking-tighter align-middle">
-                  Featured
-                </span>
-              )}
-            </h1>
-
-            {/* 文章信息 - 极简风格 */}
-            <div className="flex flex-wrap items-center gap-6 text-sm text-gray-500 dark:text-gray-400 font-medium">
-              <div className="flex items-center gap-3">
-                {post.author.profile?.avatar ? (
-                  <div className="w-10 h-10 rounded-full border-2 border-black dark:border-white overflow-hidden bg-white">
-                    <OptimizedAvatar
-                      src={post.author.profile.avatar}
-                      alt={
-                        post.author.profile?.displayName || post.author.username
-                      }
-                      className="w-full h-full"
-                      priority={true}
-                    />
-                  </div>
-                ) : (
-                  <div className="w-10 h-10 bg-black dark:bg-white rounded-full flex items-center justify-center text-white dark:text-black text-xs font-bold border-2 border-black dark:border-white">
-                    {(post.author.profile?.displayName || post.author.username)
-                      .charAt(0)
-                      .toUpperCase()}
-                  </div>
-                )}
-                <div className="flex flex-col">
-                  <span className="text-black dark:text-white font-bold">
-                    {post.author.profile?.displayName || post.author.username}
-                  </span>
-                  <span className="text-[12px] opacity-70">
-                    {format(
-                      new Date(post.publishedAt || post.createdAt),
-                      "yyyy年MM月dd日",
-                      { locale: zhCN }
-                    )}
-                  </span>
+          {/* 文章信息 - 极简风格 */}
+          <div className="flex flex-wrap items-center gap-6 text-sm text-gray-500 dark:text-gray-400 font-medium">
+            <div className="flex items-center gap-3">
+              {post.author.profile?.avatar ? (
+                <div className="w-10 h-10 rounded-full border-2 border-black dark:border-white overflow-hidden bg-white">
+                  <OptimizedAvatar
+                    src={post.author.profile.avatar}
+                    alt={
+                      post.author.profile?.displayName || post.author.username
+                    }
+                    className="w-full h-full"
+                    priority={true}
+                  />
                 </div>
-              </div>
-
-              <div className="h-4 w-[1px] bg-gray-200 dark:bg-gray-800 hidden sm:block" />
-
-              {post.commentsCount > 0 && (
-                <span className="flex items-center gap-1.5 hover:text-black dark:hover:text-white transition-colors cursor-default">
-                  <svg
-                    className="w-4 h-4"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
-                    />
-                  </svg>
-                  {post.commentsCount} Comments
-                </span>
+              ) : (
+                <div className="w-10 h-10 bg-black dark:bg-white rounded-full flex items-center justify-center text-white dark:text-black text-xs font-bold border-2 border-black dark:border-white">
+                  {(post.author.profile?.displayName || post.author.username)
+                    .charAt(0)
+                    .toUpperCase()}
+                </div>
               )}
-            </div>
-          </header>
-
-          {/* 文章内容 */}
-          <article className="mb-16">
-            <MarkdownRenderer
-              content={post.content || "暂无内容"}
-              showToc={true}
-            />
-          </article>
-
-          <div className="h-[2px] w-full bg-black dark:bg-white mb-16 opacity-10" />
-
-          {/* 相关文章推荐 */}
-          <RelatedPosts slug={slug} limit={3} />
-
-          {/* 底部导航 */}
-          <footer className="mt-16 pt-8 border-t border-gray-100 dark:border-gray-800">
-            <div className="flex flex-col sm:flex-row justify-between items-center gap-6">
-              <div className="text-[12px] text-gray-400 flex items-center gap-2 font-mono italic">
-                <span>LAST UPDATED:</span>
-                <span className="text-black dark:text-white font-bold not-italic">
-                  {format(new Date(post.updatedAt), "yyyy.MM.dd", {
-                    locale: zhCN,
-                  })}
+              <div className="flex flex-col">
+                <span className="text-black dark:text-white font-bold">
+                  {post.author.profile?.displayName || post.author.username}
+                </span>
+                <span className="text-[12px] opacity-70">
+                  {format(
+                    new Date(post.publishedAt || post.createdAt),
+                    "yyyy年MM月dd日",
+                    { locale: zhCN }
+                  )}
                 </span>
               </div>
-              <Link
-                href="/"
-                className="px-6 py-2 bg-black dark:bg-white text-white dark:text-black rounded-full text-xs font-bold hover:opacity-80 transition-opacity uppercase tracking-widest"
-              >
-                Back to Home
-              </Link>
             </div>
-          </footer>
-        </div>
-      </PublicLayout>
-    </>
+
+            <div className="h-4 w-[1px] bg-gray-200 dark:bg-gray-800 hidden sm:block" />
+
+            {post.commentsCount > 0 && (
+              <span className="flex items-center gap-1.5 hover:text-black dark:hover:text-white transition-colors cursor-default">
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                  />
+                </svg>
+                {post.commentsCount} Comments
+              </span>
+            )}
+          </div>
+        </header>
+
+        {/* 文章内容 */}
+        <article className="mb-16">
+          <MarkdownRenderer
+            content={post.content || "暂无内容"}
+            showToc={true}
+          />
+        </article>
+
+        <div className="h-[2px] w-full bg-black dark:bg-white mb-16 opacity-10" />
+
+        {/* 相关文章推荐 */}
+        <RelatedPosts slug={slug} limit={3} />
+
+        {/* 底部导航 */}
+        <footer className="mt-16 pt-8 border-t border-gray-100 dark:border-gray-800">
+          <div className="flex flex-col sm:flex-row justify-between items-center gap-6">
+            <div className="text-[12px] text-gray-400 flex items-center gap-2 font-mono italic">
+              <span>LAST UPDATED:</span>
+              <span className="text-black dark:text-white font-bold not-italic">
+                {format(new Date(post.updatedAt), "yyyy.MM.dd", {
+                  locale: zhCN,
+                })}
+              </span>
+            </div>
+            <Link
+              href="/"
+              className="px-6 py-2 bg-black dark:bg-white text-white dark:text-black rounded-full text-xs font-bold hover:opacity-80 transition-opacity uppercase tracking-widest"
+            >
+              Back to Home
+            </Link>
+          </div>
+        </footer>
+      </div>
+    </PublicLayout>
   );
 }

@@ -5,8 +5,6 @@ import { useSearchParams } from "next/navigation";
 import PublicLayout from "@/components/layout/public-layout";
 import AdminProfileCard from "@/components/profile/admin-profile-card";
 import PostList from "@/components/posts/post-list";
-import { SeasonalBackground } from "@/components/home/seasonal-background";
-import { FlowerClick } from "@/components/home/flower-click";
 import { SimpleLoading } from "@/components/ui/loading";
 
 function HomeContent() {
@@ -63,49 +61,37 @@ function HomeContent() {
 
   if (isLoading) {
     return (
-      <>
-        <SeasonalBackground />
-        <FlowerClick />
-        <PublicLayout>
-          <SimpleLoading />
-        </PublicLayout>
-      </>
+      <PublicLayout>
+        <SimpleLoading />
+      </PublicLayout>
     );
   }
 
   return (
-    <>
-      {/* 季节背景效果（使用seasonalfx库） */}
-      <SeasonalBackground />
+    <PublicLayout
+      sidebar={
+        profileData && (
+          <AdminProfileCard profile={profileData} categories={categories} />
+        )
+      }
+    >
+      <div className="flex flex-col lg:grid lg:grid-cols-[280px_1fr] gap-8 lg:gap-16 lg:ml-32">
+        {/* 桌面端：个人信息在左侧 */}
+        <aside className="hidden lg:block order-1 lg:order-none pt-4">
+          <AdminProfileCard profile={profileData} categories={categories} />
+        </aside>
 
-      {/* 点击小红花效果 */}
-      <FlowerClick />
-
-      <PublicLayout
-        sidebar={
-          profileData && (
-            <AdminProfileCard profile={profileData} categories={categories} />
-          )
-        }
-      >
-        <div className="flex flex-col lg:grid lg:grid-cols-[280px_1fr] gap-8 lg:gap-16 lg:ml-32">
-          {/* 桌面端：个人信息在左侧 */}
-          <aside className="hidden lg:block order-1 lg:order-none pt-4">
-            <AdminProfileCard profile={profileData} categories={categories} />
-          </aside>
-
-          {/* 文章列表 */}
-          <main className="order-2 lg:order-none max-w-2xl">
-            <PostList
-              key={categorySlug || "all"}
-              initialPosts={postsData}
-              initialHasMore={hasMore}
-              categorySlug={categorySlug || undefined}
-            />
-          </main>
-        </div>
-      </PublicLayout>
-    </>
+        {/* 文章列表 */}
+        <section className="order-2 lg:order-none max-w-2xl">
+          <PostList
+            key={categorySlug || "all"}
+            initialPosts={postsData}
+            initialHasMore={hasMore}
+            categorySlug={categorySlug || undefined}
+          />
+        </section>
+      </div>
+    </PublicLayout>
   );
 }
 
@@ -119,12 +105,8 @@ export default function Home() {
 
 function LoadingWrapper() {
   return (
-    <>
-      <SeasonalBackground />
-      <FlowerClick />
-      <PublicLayout>
-        <SimpleLoading />
-      </PublicLayout>
-    </>
+    <PublicLayout>
+      <SimpleLoading />
+    </PublicLayout>
   );
 }

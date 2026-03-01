@@ -31,12 +31,7 @@ import { List, ChevronRight, ChevronLeft, X } from "lucide-react";
 
 import Mermaid from "./mermaid";
 import CodeBlock from "./code-block";
-import {
-  Dialog,
-  DialogContent,
-  DialogOverlay,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 
 // 组件属性接口定义
 interface MarkdownRendererProps {
@@ -85,6 +80,23 @@ function extractTextFromNode(node: ReactNode): string {
   return "";
 }
 
+function getNodeStartOffset(node: unknown): number | null {
+  if (!node || typeof node !== "object") {
+    return null;
+  }
+
+  const withPosition = node as {
+    position?: {
+      start?: {
+        offset?: number;
+      };
+    };
+  };
+
+  const offset = withPosition.position?.start?.offset;
+  return typeof offset === "number" ? offset : null;
+}
+
 function hashCode(value: string): string {
   let hash = 0;
   for (let i = 0; i < value.length; i++) {
@@ -112,39 +124,34 @@ export default function MarkdownRenderer({
   // 预生成所有标题及其稳定 ID，确保目录和标题渲染使用一致的 ID
   const { toc, headingIdMap } = useMemo(() => {
     // 首先移除代码块内容，避免将代码中的#号误解析为标题
+    // 这里使用“等长占位”而不是直接删除，确保 offset 与原文保持一致
     const codeBlockRegex = /```[\s\S]*?```/g;
-    let contentWithoutCodeBlocks = safeContent.replace(codeBlockRegex, "");
+    let contentWithoutCodeBlocks = safeContent.replace(codeBlockRegex, (m) =>
+      m.replace(/[^\n]/g, " ")
+    );
 
     const inlineCodeRegex = /`[^`]*`/g;
     contentWithoutCodeBlocks = contentWithoutCodeBlocks.replace(
       inlineCodeRegex,
-      ""
+      (m) => m.replace(/[^\n]/g, " ")
     );
 
     const headingRegex = /^(#{1,6})\s+(.+)$/gm;
     const headings: TocItem[] = [];
-    const idMap = new Map<string, string>();
-    const textCounters = new Map<string, number>(); // 跟踪每个文本的出现次数
+    const idMap = new Map<number, string>();
     let match;
-    let globalCounter = 0;
 
     // 循环匹配所有标题
     while ((match = headingRegex.exec(contentWithoutCodeBlocks)) !== null) {
       const level = match[1].length;
       const text = match[2].trim();
+      const offset = match.index;
 
       // 生成稳定的唯一 ID
-      const id = generateStableUniqueId(text, globalCounter);
-
-      // 为重复的文本创建唯一的键
-      const currentCount = textCounters.get(text) || 0;
-      const uniqueKey = currentCount === 0 ? text : `${text}___${currentCount}`;
-      textCounters.set(text, currentCount + 1);
+      const id = generateStableUniqueId(text, offset);
 
       headings.push({ id, text, level });
-      idMap.set(uniqueKey, id); // 使用唯一键建立映射
-
-      globalCounter++;
+      idMap.set(offset, id);
     }
 
     return { toc: headings, headingIdMap: idMap };
@@ -217,19 +224,13 @@ export default function MarkdownRenderer({
   };
 
   const markdownComponents = useMemo<Components>(() => {
-    // 每次渲染 markdown 时重新计数，避免使用 window 全局变量
-    const headingCounters = new Map<string, number>();
-
-    const resolveHeadingId = (children: ReactNode): string => {
+    const resolveHeadingId = (children: ReactNode, node: unknown): string => {
       const headingText = extractTextFromNode(children).trim();
-      const count = headingCounters.get(headingText) || 0;
-      headingCounters.set(headingText, count + 1);
-
-      const uniqueKey = count === 0 ? headingText : `${headingText}___${count}`;
+      const offset = getNodeStartOffset(node);
 
       return (
-        headingIdMap.get(uniqueKey) ||
-        generateStableUniqueId(headingText || "heading", count)
+        (offset !== null ? headingIdMap.get(offset) : undefined) ||
+        generateStableUniqueId(headingText || "heading", offset ?? 0)
       );
     };
 
@@ -239,12 +240,15 @@ export default function MarkdownRenderer({
       React.HTMLAttributes<HTMLHeadingElement> & { children?: ReactNode }
     > => {
       const HeadingComponent: FC<
-        React.HTMLAttributes<HTMLHeadingElement> & { children?: ReactNode }
-      > = ({ children, ...props }) => {
+        React.HTMLAttributes<HTMLHeadingElement> & {
+          children?: ReactNode;
+          node?: unknown;
+        }
+      > = ({ children, node, ...props }) => {
         const Tag = tag;
         return (
           <Tag
-            id={resolveHeadingId(children)}
+            id={resolveHeadingId(children, node)}
             className="scroll-mt-20"
             {...props}
           >
@@ -376,7 +380,6 @@ export default function MarkdownRenderer({
         open={lightboxImage !== null}
         onOpenChange={() => setLightboxImage(null)}
       >
-        <DialogOverlay />
         <DialogContent
           className="max-w-[95vw] max-h-[95vh] p-0 bg-transparent border-none shadow-none"
           onInteractOutside={(e) => e.preventDefault()}

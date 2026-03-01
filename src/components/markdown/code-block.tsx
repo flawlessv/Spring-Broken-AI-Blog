@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useMemo } from "react";
 import hljs from "highlight.js/lib/core";
 import { Copy, Check } from "lucide-react";
 
@@ -138,19 +138,33 @@ interface CodeBlockProps {
   className?: string;
 }
 
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
 export default function CodeBlock({ children, className }: CodeBlockProps) {
   const [copied, setCopied] = useState(false);
-  const codeRef = useRef<HTMLElement>(null);
 
   // Extract language from className (e.g., "language-javascript" -> "javascript")
   const match = /language-(\w+)/.exec(className || "");
   const language = match ? match[1] : "plaintext";
   const code = String(children).replace(/\n$/, "");
 
-  useEffect(() => {
-    if (codeRef.current) {
-      // Apply syntax highlighting
-      hljs.highlightElement(codeRef.current);
+  const highlightedHtml = useMemo(() => {
+    try {
+      if (language && hljs.getLanguage(language)) {
+        return hljs.highlight(code, { language, ignoreIllegals: true }).value;
+      }
+
+      return escapeHtml(code);
+    } catch (error) {
+      console.error("Highlight code failed:", error);
+      return escapeHtml(code);
     }
   }, [code, language]);
 
@@ -225,7 +239,6 @@ export default function CodeBlock({ children, className }: CodeBlockProps) {
             }}
           >
             <code
-              ref={codeRef}
               className={`hljs language-${language} block`}
               style={{
                 background: "transparent",
@@ -236,9 +249,8 @@ export default function CodeBlock({ children, className }: CodeBlockProps) {
                 fontFamily:
                   "'Fira Code', 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace",
               }}
-            >
-              {code}
-            </code>
+              dangerouslySetInnerHTML={{ __html: highlightedHtml }}
+            />
           </pre>
         </div>
       </div>
