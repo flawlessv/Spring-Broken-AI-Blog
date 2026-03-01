@@ -1,15 +1,19 @@
 import { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import { cache } from "react";
 import { format } from "date-fns";
 import { zhCN } from "date-fns/locale";
 import { ChevronLeft } from "lucide-react";
-import Image from "next/image";
 
 import PublicLayout from "@/components/layout/public-layout";
 import MarkdownRenderer from "@/components/markdown/markdown-renderer";
 import { ImmersiveReaderToggle } from "@/components/immersive-reader";
 import RelatedPosts from "@/components/posts/related-posts";
+import EssayPostView from "@/components/posts/essay-post-view";
+import { OptimizedAvatar } from "@/components/optimized/optimized-image";
+
+const SITE_NAME = "Spring Broken AI Blog";
 
 interface Post {
   id: string;
@@ -29,6 +33,12 @@ interface Post {
       avatar?: string;
     };
   };
+  category?: {
+    id: string;
+    name: string;
+    slug: string;
+    color?: string;
+  };
   categories: Array<{
     id: string;
     name: string;
@@ -44,7 +54,7 @@ interface Post {
   commentsCount: number;
 }
 
-async function getPost(slug: string): Promise<Post | null> {
+const getPost = cache(async (slug: string): Promise<Post | null> => {
   try {
     const response = await fetch(
       `${process.env.NEXTAUTH_URL || "http://localhost:7777"}/api/posts/${slug}`,
@@ -63,7 +73,7 @@ async function getPost(slug: string): Promise<Post | null> {
     console.error("获取文章详情失败:", error);
     return null;
   }
-}
+});
 
 export async function generateMetadata({
   params,
@@ -75,13 +85,13 @@ export async function generateMetadata({
 
   if (!post) {
     return {
-      title: "文章不存在 - Spring Broken AI Blog Blog",
+      title: `文章不存在 - ${SITE_NAME}`,
     };
   }
 
   return {
-    title: `${post.title} - Spring Broken AI Blog Blog`,
-    description: post.excerpt || "Spring Broken AI Blog Blog 文章详情",
+    title: `${post.title} - ${SITE_NAME}`,
+    description: post.excerpt || `${SITE_NAME} 文章详情`,
   };
 }
 
@@ -97,15 +107,47 @@ export default async function PostPage({
     notFound();
   }
 
+  // 判断是否为随笔分类（通过分类名称或 slug 判断）
+  const isEssayPost =
+    post.category?.slug === "essay" || post.category?.name === "随笔";
+
+  // 随笔风格使用专门的模板
+  if (isEssayPost) {
+    return (
+      <PublicLayout
+        leftButtons={
+          <Link
+            href="/"
+            className="inline-flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
+          >
+            <ChevronLeft className="w-4 h-4" />
+            <span>返回首页</span>
+          </Link>
+        }
+        extraButtons={null}
+      >
+        <EssayPostView
+          title={post.title}
+          content={post.content || "暂无内容"}
+          createdAt={post.createdAt}
+          updatedAt={post.updatedAt}
+          publishedAt={post.publishedAt}
+          author={post.author}
+        />
+      </PublicLayout>
+    );
+  }
+
+  // 默认的文章样式
   return (
     <PublicLayout
       leftButtons={
         <Link
           href="/"
-          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors group"
+          className="inline-flex items-center gap-2 px-4 py-1.5 border-[2px] border-black dark:border-white rounded-full text-sm font-bold hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black transition-all duration-300 group"
         >
           <ChevronLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
-          <span>返回</span>
+          <span>返回首页</span>
         </Link>
       }
       extraButtons={
@@ -117,115 +159,131 @@ export default async function PostPage({
         />
       }
     >
-      {/* 文章头部 */}
-      <header className="mb-8">
-        {/* 标题 */}
-        <h1 className="text-4xl font-bold text-gray-900 dark:text-gray-100 mb-6 leading-tight font-sans">
-          {post.title}
-          {/* 精选标记 - 右上角上标样式 */}
-          {post.featured && (
-            <sup className="ml-2 inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-gradient-to-r from-yellow-400 to-orange-400 text-white shadow-sm">
-              精选
-            </sup>
+      <div className="w-full max-w-5xl mx-auto px-2 sm:px-4">
+        {/* 文章头部 */}
+        <header className="mb-12 pt-8">
+          {/* 分类和标签 */}
+          {(post.categories.length > 0 || post.tags.length > 0) && (
+            <div className="flex flex-wrap gap-2 mb-6">
+              {post.categories.map((cat) => (
+                <span
+                  key={cat.id}
+                  className="px-3 py-1 bg-black dark:bg-white text-white dark:text-black text-[10px] font-bold rounded-full uppercase tracking-wider"
+                >
+                  {cat.name}
+                </span>
+              ))}
+              {post.tags.map((tag) => (
+                <span
+                  key={tag.id}
+                  className="px-3 py-1 border-2 border-black dark:border-white text-black dark:text-white text-[10px] font-bold rounded-full uppercase tracking-wider"
+                >
+                  #{tag.name}
+                </span>
+              ))}
+            </div>
           )}
-        </h1>
 
-        {/* 文章信息 */}
-        <div className="flex items-center space-x-6 text-sm text-gray-600 dark:text-gray-400 mb-6 pb-6 border-b border-gray-100 dark:border-gray-800">
-          <div className="flex items-center space-x-2">
-            {post.author.profile?.avatar ? (
-              <div className="relative w-8 h-8">
-                <Image
-                  src={post.author.profile.avatar}
-                  alt={post.author.profile?.displayName || post.author.username}
-                  width={32}
-                  height={32}
-                  className="rounded-full object-cover"
-                  sizes="32px"
-                  quality={80}
-                  unoptimized
-                />
-              </div>
-            ) : (
-              <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white text-xs font-bold">
-                {(post.author.profile?.displayName || post.author.username)
-                  .charAt(0)
-                  .toUpperCase()}
-              </div>
+          {/* 标题 */}
+          <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-black dark:text-white mb-8 leading-[1.1] tracking-tight font-sans">
+            {post.title}
+            {post.featured && (
+              <span className="ml-4 inline-flex items-center px-3 py-1 rounded-full text-xs font-black bg-yellow-400 text-black uppercase tracking-tighter align-middle">
+                Featured
+              </span>
             )}
-            <span className="font-medium text-base">
-              {post.author.profile?.displayName || post.author.username}
-            </span>
-          </div>
-          <span className="flex items-center space-x-1">
-            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-              <path
-                fillRule="evenodd"
-                d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z"
-                clipRule="evenodd"
-              />
-            </svg>
-            <span>
-              {format(
-                new Date(post.publishedAt || post.createdAt),
-                "yyyy年MM月dd日",
-                {
-                  locale: zhCN,
-                }
+          </h1>
+
+          {/* 文章信息 - 极简风格 */}
+          <div className="flex flex-wrap items-center gap-6 text-sm text-gray-500 dark:text-gray-400 font-medium">
+            <div className="flex items-center gap-3">
+              {post.author.profile?.avatar ? (
+                <div className="w-10 h-10 rounded-full border-2 border-black dark:border-white overflow-hidden bg-white">
+                  <OptimizedAvatar
+                    src={post.author.profile.avatar}
+                    alt={
+                      post.author.profile?.displayName || post.author.username
+                    }
+                    className="w-full h-full"
+                    priority={true}
+                  />
+                </div>
+              ) : (
+                <div className="w-10 h-10 bg-black dark:bg-white rounded-full flex items-center justify-center text-white dark:text-black text-xs font-bold border-2 border-black dark:border-white">
+                  {(post.author.profile?.displayName || post.author.username)
+                    .charAt(0)
+                    .toUpperCase()}
+                </div>
               )}
-            </span>
-          </span>
-          {post.commentsCount > 0 && (
-            <span className="flex items-center space-x-1">
-              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                <path
-                  fillRule="evenodd"
-                  d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z"
-                  clipRule="evenodd"
-                />
-              </svg>
-              <span>{post.commentsCount} 条评论</span>
-            </span>
-          )}
-        </div>
-      </header>
+              <div className="flex flex-col">
+                <span className="text-black dark:text-white font-bold">
+                  {post.author.profile?.displayName || post.author.username}
+                </span>
+                <span className="text-[12px] opacity-70">
+                  {format(
+                    new Date(post.publishedAt || post.createdAt),
+                    "yyyy年MM月dd日",
+                    { locale: zhCN }
+                  )}
+                </span>
+              </div>
+            </div>
 
-      {/* 文章内容 */}
-      <article className="mb-8">
-        <MarkdownRenderer content={post.content || "暂无内容"} showToc={true} />
-      </article>
+            <div className="h-4 w-[1px] bg-gray-200 dark:bg-gray-800 hidden sm:block" />
 
-      {/* 相关文章推荐 */}
-      <RelatedPosts slug={slug} limit={3} />
-
-      {/* 底部导航 */}
-      <div className="pt-8 border-t border-gray-100">
-        <div className="flex justify-between items-center">
-          <div className="text-sm text-gray-500 flex items-center space-x-1">
-            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-              <path
-                fillRule="evenodd"
-                d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z"
-                clipRule="evenodd"
-              />
-            </svg>
-            <span>
-              最后更新:{" "}
-              {format(new Date(post.updatedAt), "yyyy年MM月dd日", {
-                locale: zhCN,
-              })}
-            </span>
+            {post.commentsCount > 0 && (
+              <span className="flex items-center gap-1.5 hover:text-black dark:hover:text-white transition-colors cursor-default">
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                  />
+                </svg>
+                {post.commentsCount} Comments
+              </span>
+            )}
           </div>
-          <Link
-            href="/"
-            className="inline-flex items-center text-blue-600 hover:text-blue-700 transition-colors group"
-          >
-            查看更多文章
-            <span className="ml-2 group-hover:translate-x-1 transition-transform">
-              →
-            </span>
-          </Link>
-        </div>
+        </header>
+
+        {/* 文章内容 */}
+        <article className="mb-16">
+          <MarkdownRenderer
+            content={post.content || "暂无内容"}
+            showToc={true}
+          />
+        </article>
+
+        <div className="h-[2px] w-full bg-black dark:bg-white mb-16 opacity-10" />
+
+        {/* 相关文章推荐 */}
+        <RelatedPosts slug={slug} limit={3} />
+
+        {/* 底部导航 */}
+        <footer className="mt-16 pt-8 border-t border-gray-100 dark:border-gray-800">
+          <div className="flex flex-col sm:flex-row justify-between items-center gap-6">
+            <div className="text-[12px] text-gray-400 flex items-center gap-2 font-mono italic">
+              <span>LAST UPDATED:</span>
+              <span className="text-black dark:text-white font-bold not-italic">
+                {format(new Date(post.updatedAt), "yyyy.MM.dd", {
+                  locale: zhCN,
+                })}
+              </span>
+            </div>
+            <Link
+              href="/"
+              className="px-6 py-2 bg-black dark:bg-white text-white dark:text-black rounded-full text-xs font-bold hover:opacity-80 transition-opacity uppercase tracking-widest"
+            >
+              Back to Home
+            </Link>
+          </div>
+        </footer>
       </div>
     </PublicLayout>
   );

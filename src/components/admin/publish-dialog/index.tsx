@@ -10,11 +10,11 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Form } from "@/components/ui/form";
+import { AdminLoadingOverlay } from "@/components/ui/loading";
 import { usePublishDialog } from "./hooks/use-publish-dialog";
 import { CategorySection } from "./components/category-section";
 import { TagSection } from "./components/tag-section";
 import { PublishSettings } from "./components/publish-settings";
-import { CoverImageField } from "./components/cover-image-field";
 import { ExcerptField } from "./components/excerpt-field";
 import type { PublishDialogProps } from "./types";
 
@@ -59,7 +59,8 @@ export default function PublishDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        {isLoading && <AdminLoadingOverlay text="正在发布文章..." />}
         <DialogHeader>
           <DialogTitle className="flex items-center space-x-2">
             <Send className="h-5 w-5" />
@@ -70,23 +71,21 @@ export default function PublishDialog({
         <Form {...form}>
           <form
             onSubmit={form.handleSubmit(handleSubmit)}
-            className="space-y-6"
+            className="space-y-5"
           >
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <CategorySection
-                control={form.control}
-                categories={categories}
-                effectiveAiCategories={effectiveAiCategories}
-                articleContent={articleContent}
-                isCreating={isCreatingCategory}
-                isGenerating={isGeneratingCategories}
-                onSelectCategory={(id) => form.setValue("categoryId", id)}
-                onCreateCategory={handleCreateCategory}
-                onGenerateCategories={generateCategories}
-              />
+            <CategorySection
+              control={form.control}
+              categories={categories}
+              effectiveAiCategories={effectiveAiCategories}
+              articleContent={articleContent}
+              isCreating={isCreatingCategory}
+              isGenerating={isGeneratingCategories}
+              onSelectCategory={(id) => form.setValue("categoryId", id)}
+              onCreateCategory={handleCreateCategory}
+              onGenerateCategories={generateCategories}
+            />
 
-              <PublishSettings control={form.control} />
-            </div>
+            <PublishSettings control={form.control} />
 
             <TagSection
               tags={tags}
@@ -100,8 +99,6 @@ export default function PublishDialog({
               onGenerate={generateTags}
             />
 
-            <CoverImageField control={form.control} />
-
             <ExcerptField
               control={form.control}
               articleContent={articleContent}
@@ -109,7 +106,7 @@ export default function PublishDialog({
               onGenerate={handleGenerateExcerpt}
             />
 
-            <DialogFooter>
+            <DialogFooter className="pt-2">
               <Button
                 type="button"
                 variant="outline"

@@ -217,27 +217,50 @@ export function markdownToJSON(markdown: string): JSONContent {
 
       // 获取行内内容 Token
       const inlineToken = tokens[tokenIndex];
-      // 处理行内格式（粗体、斜体、链接等）
-      const paragraphContent =
-        inlineToken?.type === "inline" && inlineToken.children
-          ? processInlineChildren(inlineToken.children)
-          : [];
+
+      // 检查是否包含图片
+      const hasImage = inlineToken?.children?.some(
+        (child: any) => child.type === "image"
+      );
+
+      if (hasImage && inlineToken?.children) {
+        // 如果段落只包含图片，直接提取图片节点
+        const imageToken = inlineToken.children.find(
+          (child: any) => child.type === "image"
+        );
+        if (imageToken) {
+          const src =
+            imageToken.attrs?.find((attr: any[]) => attr[0] === "src")?.[1] ||
+            "";
+          const alt = imageToken.content || "";
+          content.push({
+            type: "image",
+            attrs: { src, alt },
+          });
+        }
+      } else {
+        // 处理行内格式（粗体、斜体、链接等）
+        const paragraphContent =
+          inlineToken?.type === "inline" && inlineToken.children
+            ? processInlineChildren(inlineToken.children)
+            : [];
+
+        // 过滤掉空的文本节点
+        const filteredContent = paragraphContent.filter((item: any) => {
+          if (item.type === "text") {
+            return !isEmptyText(item.text);
+          }
+          return true;
+        });
+
+        // 只有非空段落才添加
+        if (filteredContent.length > 0) {
+          content.push({ type: "paragraph", content: filteredContent });
+        }
+      }
 
       tokenIndex++; // 跳过 inline
       tokenIndex++; // 跳过 paragraph_close
-
-      // 过滤掉空的文本节点
-      const filteredContent = paragraphContent.filter((item: any) => {
-        if (item.type === "text") {
-          return !isEmptyText(item.text);
-        }
-        return true;
-      });
-
-      // 只有非空段落才添加
-      if (filteredContent.length > 0) {
-        content.push({ type: "paragraph", content: filteredContent });
-      }
     }
     // ========== 列表（有序/无序）==========
     else if (
@@ -454,6 +477,11 @@ export function jsonToMarkdown(json: JSONContent): string {
           paragraphText += text;
         } else if (child.type === "hardBreak") {
           paragraphText += "\n";
+        } else if (child.type === "image") {
+          // 处理段落中的图片（Tiptap 可能将图片放在段落内）
+          const src = child.attrs?.src || "";
+          const alt = child.attrs?.alt || "";
+          paragraphText += `![${alt}](${src})`;
         }
       }
 
@@ -491,6 +519,13 @@ export function jsonToMarkdown(json: JSONContent): string {
     // ========== 分隔线 ==========
     if (node.type === "horizontalRule") {
       return "---";
+    }
+
+    // ========== 图片 ==========
+    if (node.type === "image") {
+      const src = node.attrs?.src || "";
+      const alt = node.attrs?.alt || "";
+      return `![${alt}](${src})`;
     }
 
     // 未知类型：返回空字符串

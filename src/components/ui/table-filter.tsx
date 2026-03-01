@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Filter, X } from "lucide-react";
+import { Filter } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -11,7 +11,10 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 
-interface FilterOption {
+export type TableFilterType = "text" | "select" | "multiselect" | "date";
+export type TableFilterValue = string | string[] | null | undefined;
+
+export interface TableFilterOption {
   label: string;
   value: string;
   color?: string;
@@ -20,11 +23,11 @@ interface FilterOption {
 interface TableFilterProps {
   columnKey: string;
   columnTitle: string;
-  filterType: "text" | "select" | "multiselect" | "date";
-  options?: FilterOption[];
+  filterType: TableFilterType;
+  options?: TableFilterOption[];
   placeholder?: string;
-  currentValue?: any;
-  onFilterChange: (columnKey: string, value: any) => void;
+  currentValue?: TableFilterValue;
+  onFilterChange: (columnKey: string, value: TableFilterValue) => void;
   onApply: (columnKey: string) => void;
   onReset: (columnKey: string) => void;
   onOpen: (columnKey: string) => void;
@@ -46,7 +49,7 @@ export function TableFilter({
   onClose,
   isOpen,
 }: TableFilterProps) {
-  const [tempValue, setTempValue] = useState<any>(currentValue);
+  const [tempValue, setTempValue] = useState<TableFilterValue>(currentValue);
 
   const handleOpen = () => {
     setTempValue(currentValue);
@@ -84,9 +87,8 @@ export function TableFilter({
           variant="ghost"
           size="sm"
           className={`h-6 w-6 p-0 hover:bg-gray-200 ${
-            hasActiveFilter ? "bg-blue-100 text-blue-600" : ""
+            hasActiveFilter ? "bg-gray-200 text-black" : ""
           }`}
-          onClick={handleOpen}
         >
           <Filter
             className={`h-3 w-3 ${hasActiveFilter ? "fill-current" : ""}`}
@@ -101,7 +103,7 @@ export function TableFilter({
               <div className="space-y-2">
                 <Input
                   placeholder={placeholder || `筛选${columnTitle}`}
-                  value={tempValue || ""}
+                  value={typeof tempValue === "string" ? tempValue : ""}
                   onChange={(e) => setTempValue(e.target.value)}
                   className="h-8"
                 />
@@ -111,7 +113,10 @@ export function TableFilter({
             {filterType === "multiselect" && options.length > 0 && (
               <>
                 {options.map((option) => {
-                  const isSelected = tempValue?.includes(option.value) || false;
+                  const currentValues = Array.isArray(tempValue)
+                    ? tempValue
+                    : [];
+                  const isSelected = currentValues.includes(option.value);
                   return (
                     <label
                       key={option.value}
@@ -120,25 +125,18 @@ export function TableFilter({
                       <Checkbox
                         checked={isSelected}
                         onCheckedChange={(checked) => {
-                          const currentValues = tempValue || [];
-                          if (checked) {
+                          if (checked === true) {
                             setTempValue([...currentValues, option.value]);
                           } else {
                             setTempValue(
                               currentValues.filter(
-                                (v: string) => v !== option.value
+                                (value) => value !== option.value
                               )
                             );
                           }
                         }}
                         className="rounded"
                       />
-                      {option.color && (
-                        <div
-                          className="w-3 h-3 rounded-full"
-                          style={{ backgroundColor: option.color }}
-                        />
-                      )}
                       <span className="text-sm">{option.label}</span>
                     </label>
                   );
@@ -158,7 +156,7 @@ export function TableFilter({
                       <Checkbox
                         checked={isSelected}
                         onCheckedChange={(checked) => {
-                          if (checked) {
+                          if (checked === true) {
                             setTempValue(option.value);
                           } else {
                             setTempValue(null);
@@ -166,12 +164,6 @@ export function TableFilter({
                         }}
                         className="rounded"
                       />
-                      {option.color && (
-                        <div
-                          className="w-3 h-3 rounded-full"
-                          style={{ backgroundColor: option.color }}
-                        />
-                      )}
                       <span className="text-sm">{option.label}</span>
                     </label>
                   );
@@ -193,7 +185,7 @@ export function TableFilter({
             <Button
               size="sm"
               onClick={handleApply}
-              className="bg-blue-600 hover:bg-blue-700"
+              className="bg-black dark:bg-white text-white dark:text-black hover:opacity-90"
             >
               确定
             </Button>

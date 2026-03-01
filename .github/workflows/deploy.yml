@@ -71,13 +71,20 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
           NEXTAUTH_URL: ${{ secrets.NEXTAUTH_URL }}
+          KIMI_API_KEY: ${{ secrets.KIMI_API_KEY }}
+          KIMI_BASE_URL: ${{ secrets.KIMI_BASE_URL }}
+          KIMI_MODEL: ${{ secrets.KIMI_MODEL }}
+          OLLAMA_BASE_URL: ${{ secrets.OLLAMA_BASE_URL }}
+          OLLAMA_EMBEDDING_MODEL: ${{ secrets.OLLAMA_EMBEDDING_MODEL }}
+          CHROMADB_HOST: ${{ secrets.CHROMADB_HOST }}
+          CHROMADB_PORT: ${{ secrets.CHROMADB_PORT }}
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           port: ${{ secrets.SERVER_PORT || 22 }}
           command_timeout: 20m
-          envs: DATABASE_URL,NEXTAUTH_SECRET,NEXTAUTH_URL
+          envs: DATABASE_URL,NEXTAUTH_SECRET,NEXTAUTH_URL,KIMI_API_KEY,KIMI_BASE_URL,KIMI_MODEL,OLLAMA_BASE_URL,OLLAMA_EMBEDDING_MODEL,CHROMADB_HOST,CHROMADB_PORT
           script: |
             cd /www/wwwroot/my-next-app
 
@@ -88,6 +95,21 @@ jobs:
             NEXTAUTH_URL="${NEXTAUTH_URL}"
             NODE_ENV="production"
             EOF
+
+            # 添加 AI 配置（如果提供了 AI 相关的 Secrets）
+            if [ -n "${KIMI_API_KEY}" ]; then
+              echo "KIMI_API_KEY=\"${KIMI_API_KEY}\"" >> .env.production
+              echo "KIMI_BASE_URL=\"${KIMI_BASE_URL:-https://api.moonshot.cn/v1}\"" >> .env.production
+              echo "KIMI_MODEL=\"${KIMI_MODEL:-moonshot-v1-32k}\"" >> .env.production
+              echo "OLLAMA_BASE_URL=\"${OLLAMA_BASE_URL:-http://localhost:11434}\"" >> .env.production
+              echo "OLLAMA_EMBEDDING_MODEL=\"${OLLAMA_EMBEDDING_MODEL:-nomic-embed-text}\"" >> .env.production
+              echo "CHROMADB_HOST=\"${CHROMADB_HOST:-localhost}\"" >> .env.production
+              echo "CHROMADB_PORT=\"${CHROMADB_PORT:-8000}\"" >> .env.production
+              echo "✅ AI 配置已添加"
+            else
+              echo "⚠️  未配置 AI 相关环境变量（AI 功能将不可用）"
+            fi
+
             chmod 600 .env.production
             echo "环境变量文件已更新"
 
@@ -101,6 +123,19 @@ jobs:
             echo "=== 清理旧的 Next.js 构建产物 ==="
             rm -rf .next
 
+            echo "=== 检查并设置 Swap 空间 ==="
+            if [ -f /swapfile ]; then
+                echo "✅ Swap 文件已存在"
+                swapon --show
+            else
+                echo "创建 4GB Swap 文件以避免 OOM..."
+                sudo fallocate -l 4G /swapfile 2>/dev/null || sudo dd if=/dev/zero of=/swapfile bs=1M count=4096
+                sudo chmod 600 /swapfile
+                sudo mkswap /swapfile
+                sudo swapon /swapfile
+                echo "✅ Swap 已启用"
+                free -h
+            fi
 
             echo "=== 构建 Next.js 项目 ==="
             echo "开始时间: $(date '+%Y-%m-%d %H:%M:%S')"
@@ -137,6 +172,79 @@ jobs:
             echo "Build ID: $(cat .next/BUILD_ID)"
             ls -lh .next/ | head -20
 
+      # 启动 AI 服务（如果配置了 AI 相关环境变量）
+      - name: 启动 AI 服务
+        uses: appleboy/ssh-action@master
+        env:
+          KIMI_API_KEY: ${{ secrets.KIMI_API_KEY }}
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          port: ${{ secrets.SERVER_PORT || 22 }}
+          command_timeout: 10m
+          script: |
+            cd /www/wwwroot/my-next-app
+
+            # 如果没有配置 Kimi API Key，跳过 AI 服务启动
+            if [ -z "${KIMI_API_KEY}" ]; then
+              echo "⚠️  未配置 AI 服务，跳过 Ollama 和 ChromaDB 启动"
+              exit 0
+            fi
+
+            echo "=== 启动 AI 服务 ==="
+
+            # 1. 启动 Ollama
+            echo "🤖 检查 Ollama 服务..."
+            if pgrep -f "ollama serve" > /dev/null; then
+                echo "✅ Ollama 已在运行"
+            else
+                echo "启动 Ollama..."
+                nohup ollama serve > /tmp/ollama.log 2>&1 &
+                sleep 5
+
+                if curl -s http://localhost:11434/api/tags > /dev/null 2>&1; then
+                    echo "✅ Ollama 启动成功"
+                else
+                    echo "❌ Ollama 启动失败，查看日志: tail -f /tmp/ollama.log"
+                    exit 1
+                fi
+            fi
+
+            # 2. 检查并下载 Embedding 模型
+            echo "🔍 检查 Embedding 模型..."
+            if ollama list 2>/dev/null | grep -q "nomic-embed-text"; then
+                echo "✅ 模型已安装"
+            else
+                echo "下载 nomic-embed-text 模型..."
+                ollama pull nomic-embed-text
+                echo "✅ 模型下载完成"
+            fi
+
+            # 3. 启动 ChromaDB
+            echo "📦 检查 ChromaDB 服务..."
+            if pgrep -f "chromadb" > /dev/null || pgrep -f "chroma run" > /dev/null; then
+                echo "✅ ChromaDB 已在运行"
+            else
+                # 创建数据目录
+                mkdir -p /www/wwwroot/my-next-app/data/chroma
+
+                echo "启动 ChromaDB..."
+                nohup npx chromadb run --path /www/wwwroot/my-next-app/data/chroma --port 8000 > /tmp/chromadb.log 2>&1 &
+                sleep 5
+
+                if curl -s http://localhost:8000/api/v1/heartbeat > /dev/null 2>&1; then
+                    echo "✅ ChromaDB 启动成功"
+                else
+                    echo "❌ ChromaDB 启动失败，查看日志: tail -f /tmp/chromadb.log"
+                    exit 1
+                fi
+            fi
+
+            echo "✅ AI 服务启动完成"
+            echo "   Ollama:   http://localhost:11434"
+            echo "   ChromaDB: http://localhost:8000"
+
       # 重启 PM2 应用
       - name: 重启应用
         uses: appleboy/ssh-action@master
@@ -169,11 +277,11 @@ jobs:
             echo "✅ .env.production 文件存在"
 
             echo "=== 停止旧应用进程 ==="
-            pm2 stop spring-lament-blog || true
+            pm2 stop spring-broken-ai-blog || true
             sleep 2
 
             echo "=== 删除旧进程 ==="
-            pm2 delete spring-lament-blog || true
+            pm2 delete spring-broken-ai-blog || true
 
             echo "=== 启动应用 ==="
             pm2 start ecosystem.config.js --env production --update-env
@@ -184,7 +292,7 @@ jobs:
             echo "=== 验证应用状态 ==="
             pm2 list
 
-            if pm2 list | grep -q "spring-lament-blog.*online"; then
+            if pm2 list | grep -q "spring-broken-ai-blog.*online"; then
                 echo "✅ 应用启动成功"
 
                 echo "=== 检查端口 3000 是否监听 ==="
@@ -196,9 +304,9 @@ jobs:
             else
                 echo "❌ 应用启动失败"
                 echo "=== PM2 进程详情 ==="
-                pm2 describe spring-lament-blog || true
+                pm2 describe spring-broken-ai-blog || true
                 echo "=== 最近日志 ==="
-                pm2 logs spring-lament-blog --lines 50 --nostream || true
+                pm2 logs spring-broken-ai-blog --lines 50 --nostream || true
                 exit 1
             fi
 

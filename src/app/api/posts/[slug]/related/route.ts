@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getVectorStore } from "@/lib/vector/store";
-import { getAIClient } from "@/lib/ai/client";
 
 interface RelatedPost {
   id: string;
@@ -92,6 +90,10 @@ async function getVectorRelatedPosts(
   },
   limit: number
 ): Promise<RelatedPost[]> {
+  // 动态导入服务器端模块,避免客户端打包警告
+  const { getAIClient } = await import("@/lib/ai/client");
+  const { getVectorStore } = await import("@/lib/vector/store");
+
   const aiClient = getAIClient();
   const vectorStore = getVectorStore();
 
@@ -211,6 +213,7 @@ async function getFallbackRelatedPosts(
       excerpt: true,
       coverImage: true,
       createdAt: true,
+      categoryId: true,
       category: { select: { name: true, slug: true } },
       tags: { include: { tag: true } },
     },
@@ -223,7 +226,7 @@ async function getFallbackRelatedPosts(
     const postTagIds = new Set(post.tags.map((t) => t.tag.id));
     const commonTags = tagIds.filter((id) => postTagIds.has(id)).length;
     const sameCategory =
-      post.category && currentPost.categoryId === post.category.slug ? 1 : 0;
+      post.categoryId && currentPost.categoryId === post.categoryId ? 1 : 0;
 
     return {
       id: post.id,

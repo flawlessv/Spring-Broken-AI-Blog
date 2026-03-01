@@ -19,22 +19,8 @@ interface ImageWithFallbackProps {
   onError?: () => void;
 }
 
-// 优化的随机图片API列表（精选10个稳定快速的）
-const OPTIMIZED_RANDOM_IMAGE_APIS = [
-  "https://picsum.photos/800/600",
-  "https://www.dmoe.cc/random.php",
-  "https://api.btstu.cn/sjbz/api.php",
-  "https://www.loliapi.com/acg/",
-  "https://api.likepoems.com/img/pc",
-  "https://img.paulzzh.com/touhou/random",
-];
-
-// 获取随机图片API
-const getRandomImageApi = () => {
-  return OPTIMIZED_RANDOM_IMAGE_APIS[
-    Math.floor(Math.random() * OPTIMIZED_RANDOM_IMAGE_APIS.length)
-  ];
-};
+// 默认封面图（本地图片）
+const DEFAULT_COVER_IMAGE = "/images/posts/covers/tech-1.jpg";
 
 // 默认占位图（Base64 编码的1x1透明像素）
 const PLACEHOLDER_IMAGE =
@@ -54,9 +40,9 @@ export function ImageWithFallback({
   onLoad,
   onError,
 }: ImageWithFallbackProps) {
-  // 如果 src 为空或无效，立即使用备用图片或随机图片
+  // 如果 src 为空或无效，使用备用图片或默认封面
   const initialSrc =
-    !src || src.trim() === "" ? fallbackSrc || getRandomImageApi() : src;
+    !src || src.trim() === "" ? fallbackSrc || DEFAULT_COVER_IMAGE : src;
 
   const [imgSrc, setImgSrc] = useState(initialSrc);
   const [isLoading, setIsLoading] = useState(true);
@@ -67,21 +53,9 @@ export function ImageWithFallback({
 
     if (onError) onError();
 
-    // 如果主图加载失败，尝试使用备用图片
-    if (
-      !fallbackSrc &&
-      !imgSrc.includes("picsum") &&
-      !imgSrc.includes("unsplash")
-    ) {
-      // 尝试使用随机API作为备用
-      const fallbackApi = getRandomImageApi();
-      setImgSrc(fallbackApi);
-    } else if (fallbackSrc && imgSrc !== fallbackSrc) {
-      // 使用指定的备用图片
-      setImgSrc(fallbackSrc);
-    } else {
-      // 所有备用方案都失败，使用占位图
-      setImgSrc(PLACEHOLDER_IMAGE);
+    // 如果主图加载失败，使用默认封面
+    if (imgSrc !== DEFAULT_COVER_IMAGE) {
+      setImgSrc(DEFAULT_COVER_IMAGE);
     }
   };
 
@@ -93,9 +67,9 @@ export function ImageWithFallback({
 
   // 监听src变化
   useEffect(() => {
-    // 如果新的 src 为空，使用备用图片或随机图片
+    // 如果新的 src 为空，使用备用图片或默认封面
     if (!src || src.trim() === "") {
-      setImgSrc(fallbackSrc || getRandomImageApi());
+      setImgSrc(fallbackSrc || DEFAULT_COVER_IMAGE);
     } else {
       setImgSrc(src);
     }
@@ -157,18 +131,17 @@ export function BackgroundImage({
   priority = false,
   fallbackSrc,
 }: BackgroundImageProps) {
-  // 如果 src 为空或无效，立即使用备用图片或随机图片
+  // 如果 src 为空或无效，使用备用图片或默认封面
   const initialSrc =
-    !src || src.trim() === "" ? fallbackSrc || getRandomImageApi() : src;
+    !src || src.trim() === "" ? fallbackSrc || DEFAULT_COVER_IMAGE : src;
 
   const [imgSrc, setImgSrc] = useState(initialSrc);
   const [isLoading, setIsLoading] = useState(true);
 
   const handleError = () => {
-    if (fallbackSrc && imgSrc !== fallbackSrc) {
-      setImgSrc(fallbackSrc);
-    } else {
-      setImgSrc(getRandomImageApi());
+    // 使用默认封面作为备用
+    if (imgSrc !== DEFAULT_COVER_IMAGE) {
+      setImgSrc(DEFAULT_COVER_IMAGE);
     }
   };
 
@@ -177,9 +150,9 @@ export function BackgroundImage({
   };
 
   useEffect(() => {
-    // 如果新的 src 为空，使用备用图片或随机图片
+    // 如果新的 src 为空，使用备用图片或默认封面
     if (!src || src.trim() === "") {
-      setImgSrc(fallbackSrc || getRandomImageApi());
+      setImgSrc(fallbackSrc || DEFAULT_COVER_IMAGE);
     } else {
       setImgSrc(src);
     }

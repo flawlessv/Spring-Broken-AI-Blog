@@ -29,7 +29,6 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Loader2 } from "lucide-react";
 
 // 表单验证 schema
 const tagSchema = z.object({
@@ -41,35 +40,18 @@ const tagSchema = z.object({
     .string()
     .min(1, "URL slug不能为空")
     .max(30, "URL slug不能超过30个字符"),
-  color: z
-    .string()
-    .regex(/^#[0-9A-Fa-f]{6}$/, "请输入有效的颜色代码")
-    .optional()
-    .or(z.literal("")),
 });
 
 type TagFormData = z.infer<typeof tagSchema>;
 
-// 预设颜色选项
-const colorOptions = [
-  "#3B82F6", // Blue
-  "#10B981", // Emerald
-  "#8B5CF6", // Violet
-  "#F59E0B", // Amber
-  "#EF4444", // Red
-  "#EC4899", // Pink
-  "#6366F1", // Indigo
-  "#14B8A6", // Teal
-  "#F97316", // Orange
-  "#84CC16", // Lime
-  "#06B6D4", // Cyan
-  "#8B5A2B", // Brown
-];
-
 interface TagDialogProps {
   open: boolean;
   onClose: () => void;
-  tag?: any;
+  tag?: {
+    id: string;
+    name: string;
+    slug: string;
+  } | null;
 }
 
 export default function TagDialog({ open, onClose, tag }: TagDialogProps) {
@@ -82,13 +64,11 @@ export default function TagDialog({ open, onClose, tag }: TagDialogProps) {
     defaultValues: {
       name: "",
       slug: "",
-      color: "",
     },
   });
 
   const { watch, setValue, reset } = form;
   const name = watch("name");
-  const color = watch("color");
 
   // 自动生成 slug
   useEffect(() => {
@@ -109,13 +89,11 @@ export default function TagDialog({ open, onClose, tag }: TagDialogProps) {
         reset({
           name: tag.name,
           slug: tag.slug,
-          color: tag.color || "",
         });
       } else {
         reset({
           name: "",
           slug: "",
-          color: "",
         });
       }
     }
@@ -201,46 +179,6 @@ export default function TagDialog({ open, onClose, tag }: TagDialogProps) {
                   <FormDescription>
                     用于URL路径，会自动根据标签名称生成
                   </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            {/* 颜色选择 */}
-            <FormField
-              control={form.control}
-              name="color"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>颜色（可选）</FormLabel>
-                  <div className="space-y-2">
-                    <div className="flex items-center space-x-2">
-                      <FormControl>
-                        <Input
-                          placeholder="#3B82F6"
-                          {...field}
-                          className="w-24 font-mono"
-                        />
-                      </FormControl>
-                      {color && (
-                        <div
-                          className="w-8 h-8 rounded border border-border"
-                          style={{ backgroundColor: color }}
-                        />
-                      )}
-                    </div>
-                    <div className="grid grid-cols-6 gap-2">
-                      {colorOptions.map((colorOption) => (
-                        <button
-                          key={colorOption}
-                          type="button"
-                          className="w-8 h-8 rounded border border-border hover:scale-110 transition-transform"
-                          style={{ backgroundColor: colorOption }}
-                          onClick={() => setValue("color", colorOption)}
-                        />
-                      ))}
-                    </div>
-                  </div>
                   <FormMessage />
                 </FormItem>
               )}

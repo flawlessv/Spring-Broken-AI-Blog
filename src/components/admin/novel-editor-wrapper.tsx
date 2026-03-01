@@ -19,6 +19,7 @@ import {
   Placeholder,
   TiptapLink,
 } from "novel";
+import Image from "@tiptap/extension-image";
 import { AICompletion } from "@/lib/editor/ai-completion-extension";
 import {
   markdownToJSON,
@@ -29,16 +30,51 @@ interface NovelEditorWrapperProps {
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
+  postId?: string;
+  postSlug?: string;
+  onEditorReady?: (editor: any) => void; // 暴露编辑器实例
 }
 
 export default function NovelEditorWrapper({
   value,
   onChange,
   placeholder = "开始写作吧...",
+  postId,
+  postSlug,
+  onEditorReady,
 }: NovelEditorWrapperProps) {
   // 防止循环更新的标志
   const isUpdatingRef = useRef(false);
   const editorRef = useRef<any>(null);
+
+  // 图片上传处理函数
+  const handleImageUpload = async (file: File) => {
+    if (!postId || !postSlug) {
+      throw new Error("请先保存文章后再上传图片");
+    }
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("postId", postId);
+      formData.append("type", "content");
+
+      const response = await fetch("/api/admin/images/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error("图片上传失败");
+      }
+
+      const data = await response.json();
+      return data.image.path; // 返回图片 URL
+    } catch (error) {
+      console.error("图片上传失败:", error);
+      throw error;
+    }
+  };
 
   // 初始化内容：将 Markdown 转换为 JSONContent
   const initialContent = useMemo(() => {
@@ -65,7 +101,6 @@ export default function NovelEditorWrapper({
     // 更新编辑器内容
     isUpdatingRef.current = true;
     editor.commands.setContent(markdownToJSON(value));
-    // 立即重置标志，因为 setContent 是同步的
     isUpdatingRef.current = false;
   }, [value]);
 
@@ -81,6 +116,13 @@ export default function NovelEditorWrapper({
             TiptapLink.configure({
               openOnClick: false,
             }),
+            Image.configure({
+              inline: false, // 改为 false，让图片成为块级元素
+              allowBase64: false,
+              HTMLAttributes: {
+                class: "rounded-lg max-w-xl mx-auto h-auto my-4",
+              },
+            }),
             Placeholder.configure({
               placeholder: placeholder,
             }),
@@ -90,6 +132,10 @@ export default function NovelEditorWrapper({
               apiEndpoint: "/api/ai/write/complete",
             }),
           ]}
+          onCreate={({ editor }) => {
+            editorRef.current = editor;
+            onEditorReady?.(editor);
+          }}
           onUpdate={({ editor }) => {
             // 保存编辑器实例
             editorRef.current = editor;
@@ -104,7 +150,68 @@ export default function NovelEditorWrapper({
           editorProps={{
             attributes: {
               class:
-                "prose prose-sm max-w-none focus:outline-none min-h-[500px]",
+                "prose prose-lg dark:prose-invert max-w-none focus:outline-none min-h-[500px]",
+            },
+            handleDrop: (view, event, slice, moved) => {
+              // 处理图片拖拽上传
+              if (
+                !moved &&
+                event.dataTransfer &&
+                event.dataTransfer.files &&
+                event.dataTransfer.files[0]
+              ) {
+                const file = event.dataTransfer.files[0];
+                if (file.type.startsWith("image/")) {
+                  event.preventDefault();
+                  handleImageUpload(file)
+                    .then((url) => {
+                      const { schema } = view.state;
+                      const coordinates = view.posAtCoords({
+                        left: event.clientX,
+                        top: event.clientY,
+                      });
+                      if (coordinates) {
+                        const node = schema.nodes.image.create({ src: url });
+                        const transaction = view.state.tr.insert(
+                          coordinates.pos,
+                          node
+                        );
+                        view.dispatch(transaction);
+                      }
+                    })
+                    .catch((error) => {
+                      console.error("图片上传失败:", error);
+                    });
+                  return true;
+                }
+              }
+              return false;
+            },
+            handlePaste: (view, event) => {
+              // 处理图片粘贴上传
+              if (
+                event.clipboardData &&
+                event.clipboardData.files &&
+                event.clipboardData.files[0]
+              ) {
+                const file = event.clipboardData.files[0];
+                if (file.type.startsWith("image/")) {
+                  event.preventDefault();
+                  handleImageUpload(file)
+                    .then((url) => {
+                      const { schema } = view.state;
+                      const node = schema.nodes.image.create({ src: url });
+                      const transaction =
+                        view.state.tr.replaceSelectionWith(node);
+                      view.dispatch(transaction);
+                    })
+                    .catch((error) => {
+                      console.error("图片上传失败:", error);
+                    });
+                  return true;
+                }
+              }
+              return false;
             },
           }}
         />

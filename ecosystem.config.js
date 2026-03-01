@@ -25,6 +25,16 @@ module.exports = {
         DATABASE_URL: process.env.DATABASE_URL,
         NEXTAUTH_URL: process.env.NEXTAUTH_URL,
         NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET,
+        // AI 相关配置
+        KIMI_API_KEY: process.env.KIMI_API_KEY,
+        KIMI_BASE_URL: process.env.KIMI_BASE_URL,
+        KIMI_MODEL: process.env.KIMI_MODEL,
+        // Ollama 配置
+        OLLAMA_BASE_URL: process.env.OLLAMA_BASE_URL,
+        OLLAMA_EMBEDDING_MODEL: process.env.OLLAMA_EMBEDDING_MODEL,
+        // ChromaDB 配置
+        CHROMADB_HOST: process.env.CHROMADB_HOST,
+        CHROMADB_PORT: process.env.CHROMADB_PORT,
       },
       error_file: "./logs/err.log",
       out_file: "./logs/out.log",

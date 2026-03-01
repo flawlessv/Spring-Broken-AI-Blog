@@ -1,41 +1,37 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { format } from "date-fns";
-import { zhCN } from "date-fns/locale";
-import { BackgroundImage } from "@/components/optimized/image-with-fallback";
-
-// 类型定义
-interface PostListProps {
-  className?: string;
-  categorySlug?: string;
-}
 
 interface Post {
   id: string;
   title: string;
   slug: string;
-  excerpt?: string;
   coverImage?: string;
   createdAt: Date;
   publishedAt?: Date;
-  featured: boolean;
-  categories: Array<{
-    id: string;
-    name: string;
-  }>;
+}
+
+interface PostListProps {
+  className?: string;
+  categorySlug?: string;
+  initialPosts?: Post[];
+  initialHasMore?: boolean;
 }
 
 export default function PostList({
   className = "",
   categorySlug,
+  initialPosts = [],
+  initialHasMore = true,
 }: PostListProps) {
-  const [posts, setPosts] = useState<Post[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [posts, setPosts] = useState<Post[]>(initialPosts);
   const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
+  const [hasMore, setHasMore] = useState(initialHasMore);
   const [loadingMore, setLoadingMore] = useState(false);
+  const observerTarget = useRef<HTMLDivElement>(null);
 
   const fetchPosts = useCallback(
     async (pageNum: number) => {
@@ -62,149 +58,131 @@ export default function PostList({
           setHasMore(data.pagination.current < data.pagination.pages);
         }
       } catch (error) {
-        console.error("获取文章列表失败:", error);
+        console.error("Failed to fetch posts:", error);
       } finally {
-        setLoading(false);
         setLoadingMore(false);
       }
     },
     [categorySlug]
   );
 
+  // 监听 initialPosts 变化，重置状态
   useEffect(() => {
-    fetchPosts(page);
-  }, [page, fetchPosts]);
+    setPosts(initialPosts);
+    setPage(1);
+    setHasMore(initialHasMore);
+    setLoadingMore(false);
+  }, [initialPosts, initialHasMore, categorySlug]);
 
-  // 当分类变化时重置页面并重新加载
+  // 无限滚动观察器
   useEffect(() => {
-    // 避免初始化时重复加载
-    if (categorySlug !== undefined) {
-      setPage(1);
-      setHasMore(true);
-      setLoading(true);
-      // 不立即清空posts，等新数据加载完成后再更新，减少页面抖动
-      fetchPosts(1);
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !loadingMore) {
+          const nextPage = page + 1;
+          setPage(nextPage);
+          fetchPosts(nextPage);
+        }
+      },
+      { threshold: 0.1, rootMargin: "100px" }
+    );
+
+    const currentTarget = observerTarget.current;
+    if (currentTarget) {
+      observer.observe(currentTarget);
     }
-  }, [categorySlug, fetchPosts]);
 
-  // 滚动监听自动加载
-  useEffect(() => {
-    const handleScroll = () => {
-      if (
-        window.innerHeight + document.documentElement.scrollTop >=
-          document.documentElement.offsetHeight - 1000 &&
-        hasMore &&
-        !loading &&
-        !loadingMore
-      ) {
-        setPage((prev) => prev + 1);
+    return () => {
+      if (currentTarget) {
+        observer.unobserve(currentTarget);
       }
     };
+  }, [hasMore, loadingMore, page, fetchPosts]);
 
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, [hasMore, loading, loadingMore]);
-
-  if (loading && page === 1) {
-    return (
-      <div className={`space-y-4 ${className}`}>
-        {[...Array(3)].map((_, i) => (
-          <div key={i} className="overflow-hidden rounded-lg animate-pulse">
-            <div className="flex space-x-4">
-              <div className="w-24 h-24 bg-gray-200 rounded-lg flex-shrink-0"></div>
-              <div className="flex-1 space-y-2">
-                <div className="h-6 bg-gray-200 rounded w-3/4"></div>
-                <div className="h-4 bg-gray-200 rounded w-full"></div>
-                <div className="h-4 bg-gray-200 rounded w-5/6"></div>
-                <div className="h-3 bg-gray-200 rounded w-32"></div>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-    );
-  }
-
-  if (!posts.length) {
-    return (
-      <div className={`text-center py-12 ${className}`}>
-        <p className="text-gray-500">还没有发布任何文章</p>
-      </div>
-    );
-  }
+  useEffect(() => {
+    if (initialPosts.length === 0 && page === 1) {
+      fetchPosts(1);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
-    <div className={`space-y-[60px] sm:space-y-[60px] ${className}`}>
-      {posts.map((post, index) => (
-        <article key={post.id}>
-          <Link href={`/posts/${post.slug}`}>
-            <div className="relative w-full max-w-[680px] h-[220px] sm:h-[285px] mx-auto overflow-hidden rounded-2xl transition-all duration-300 hover:shadow-2xl group">
-              {/* 优化的背景图片 */}
-              <div className="absolute inset-0">
-                <BackgroundImage
-                  src={post.coverImage || ""}
-                  className="w-full h-full"
-                  priority={index < 2} // 前两张图片优先加载
-                  fallbackSrc="https://source.unsplash.com/random/800x600"
-                />
-                <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/20 to-black/70 transition-opacity duration-300 group-hover:from-black/20 group-hover:via-black/30 group-hover:to-black/80"></div>
-              </div>
-
-              {/* 文章内容覆盖层 */}
-              <div
-                className="relative h-full p-4 sm:p-8 flex flex-col justify-between text-white"
-                style={{ textShadow: "0 2px 8px rgba(0,0,0,0.5)" }}
-              >
-                {/* 顶部：日期和精选标识 */}
-                <div className="flex items-start justify-between">
-                  <div className="text-xs sm:text-sm opacity-90 font-medium tracking-wider">
-                    {format(
-                      new Date(post.publishedAt || post.createdAt),
-                      "MMM dd, yyyy",
-                      {
-                        locale: zhCN,
-                      }
-                    ).toUpperCase()}
+    <div className={`space-y-12 ${className}`}>
+      {posts.length === 0 && !loadingMore ? (
+        <div className="text-center py-16">
+          <div className="text-6xl mb-4">📭</div>
+          <h3 className="text-xl font-semibold text-gray-700 mb-2">暂无文章</h3>
+          <p className="text-gray-500 text-sm">
+            {categorySlug ? "该分类下还没有发布任何文章" : "还没有发布任何文章"}
+          </p>
+        </div>
+      ) : (
+        <>
+          {posts.map((post, index) => (
+            <article key={post.id} className="w-full">
+              <Link href={`/posts/${post.slug}`} className="group block w-full">
+                <div className="relative w-full h-[220px] sm:h-[280px] overflow-hidden bg-gray-100">
+                  {/* 背景图片 - 直接使用 Next.js Image */}
+                  <div className="absolute inset-0 transition-transform duration-700 group-hover:scale-105">
+                    {post.coverImage ? (
+                      <>
+                        <Image
+                          src={post.coverImage}
+                          alt={post.title}
+                          fill
+                          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 80vw, 70vw"
+                          priority={index === 0}
+                          className="object-cover"
+                          unoptimized={post.coverImage.startsWith("http")}
+                        />
+                        {/* 叠加层：深色渐变保证文字可读性 */}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/5 to-transparent"></div>
+                      </>
+                    ) : (
+                      <div className="absolute inset-0 bg-gradient-to-br from-gray-200 to-gray-300"></div>
+                    )}
                   </div>
-                  {post.featured && (
-                    <div className="w-2 h-2 sm:w-3 sm:h-3 bg-red-500 rounded-full shadow-lg"></div>
-                  )}
-                </div>
 
-                {/* 中间：标题 - 垂直居中 */}
-                <div className="flex-1 flex items-center">
-                  <h2 className="text-xl sm:text-2xl md:text-3xl font-bold leading-tight line-clamp-3 transition-all duration-300 group-hover:scale-[1.02]">
-                    {post.title}
-                  </h2>
-                </div>
+                  {/* 内容区域：左下角对齐 */}
+                  <div className="relative h-full flex flex-col justify-end p-6 sm:p-10 text-white">
+                    <div className="space-y-3">
+                      {/* 日期：全大写，间距拉开 */}
+                      <div className="text-[11px] sm:text-[13px] font-bold tracking-[0.2em] uppercase opacity-90">
+                        {format(
+                          new Date(post.publishedAt || post.createdAt),
+                          "MMM dd, yyyy"
+                        )}
+                      </div>
 
-                {/* 底部：分类标签 */}
-                {post.categories.length > 0 && (
-                  <div className="flex items-center space-x-2 sm:space-x-3">
-                    {post.categories.slice(0, 2).map((category) => (
-                      <span
-                        key={category.id}
-                        className="inline-block px-2 sm:px-3 py-0.5 sm:py-1 text-xs sm:text-sm bg-white/25 backdrop-blur-sm rounded-full transition-all duration-300 group-hover:bg-white/35"
-                      >
-                        {category.name}
-                      </span>
-                    ))}
+                      {/* 标题：大且醒目 */}
+                      <h2 className="text-xl sm:text-2xl md:text-[28px] font-bold leading-tight drop-shadow-sm">
+                        {post.title}
+                      </h2>
+                    </div>
                   </div>
-                )}
+                </div>
+              </Link>
+            </article>
+          ))}
+
+          {/* 观察目标 - 用于触发无限滚动 */}
+          <div ref={observerTarget} className="h-4" />
+
+          {loadingMore && (
+            <div className="text-center py-8">
+              <div className="inline-flex items-center gap-3 text-gray-400">
+                <div className="w-5 h-5 border-2 border-t-black border-r-black/30 border-b-transparent border-l-transparent rounded-full animate-spin" />
+                <span className="text-sm">加载中...</span>
               </div>
             </div>
-          </Link>
-        </article>
-      ))}
+          )}
 
-      {/* 自动加载指示器 */}
-      {loadingMore && (
-        <div className="text-center py-8">
-          <div className="inline-flex items-center space-x-2 text-muted-foreground">
-            <div className="w-4 h-4 border-2 border-border border-t-foreground rounded-full animate-spin"></div>
-            <span className="text-sm">加载中...</span>
-          </div>
-        </div>
+          {!hasMore && posts.length > 0 && (
+            <div className="text-center py-8 text-gray-400 text-sm">
+              已经到底啦
+            </div>
+          )}
+        </>
       )}
     </div>
   );

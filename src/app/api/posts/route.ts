@@ -112,7 +112,7 @@ export async function GET(request: NextRequest) {
       author: post.author,
       categories: post.category ? [post.category] : [],
       tags: post.tags.map((postTag) => postTag.tag),
-      commentsCount: 0, // TODO: 实现评论计数
+      commentsCount: 0, // 当前版本暂未启用评论系统，保持固定占位值
     }));
 
     return NextResponse.json({

@@ -2,14 +2,15 @@
 
 import { ReactNode, useState, useEffect } from "react";
 import Link from "next/link";
-import { LayoutDashboard, Moon, Sun, Menu, X } from "lucide-react";
+import { LayoutDashboard, Menu, X } from "lucide-react";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { cn } from "@/lib/utils";
 
 interface PublicLayoutProps {
   children: ReactNode;
   extraButtons?: ReactNode; // 额外的按钮，用于文章详情页的沉浸式阅读
   leftButtons?: ReactNode; // 左侧按钮，用于返回等操作
-  sidebar?: ReactNode; // 侧边栏内容（个人信息和分类）
+  sidebar?: ReactNode; // 移动端侧边栏内容
 }
 
 export default function PublicLayout({
@@ -18,114 +19,89 @@ export default function PublicLayout({
   leftButtons,
   sidebar,
 }: PublicLayoutProps) {
-  const [theme, setTheme] = useState<"light" | "dark">("light");
-  const [mounted, setMounted] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
-    setMounted(true);
-    const html = document.documentElement;
-    if (html.classList.contains("dark")) {
-      setTheme("dark");
-    }
-  }, []);
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 20);
+    };
 
-  const toggleTheme = () => {
-    const html = document.documentElement;
-    if (theme === "light") {
-      html.classList.add("dark");
-      setTheme("dark");
-    } else {
-      html.classList.remove("dark");
-      setTheme("light");
-    }
-  };
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      {/* 汉堡菜单按钮 - 仅移动端显示，与右侧按钮水平对齐，与文章左对齐 */}
-      {sidebar && (
-        <div className="lg:hidden fixed top-0 left-0 right-0 z-50 pt-4 pointer-events-none">
-          <div className="max-w-7xl mx-auto px-6 lg:px-8 pointer-events-auto">
-            <button
-              onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="inline-flex items-center justify-center p-2 rounded-lg hover:bg-accent transition-colors"
-            >
-              {sidebarOpen ? (
-                <X className="w-4 h-4 text-foreground" strokeWidth={2} />
-              ) : (
-                <Menu className="w-4 h-4 text-foreground" strokeWidth={2} />
-              )}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* 遮罩层 - 移动端显示 */}
-      {sidebarOpen && (
+      {/* 顶部导航栏背景 - 滚动时显示 */}
+      <header
+        className={cn(
+          "fixed top-0 left-0 right-0 z-40 transition-all duration-300 border-b h-16 sm:h-20 flex items-center",
+          scrolled
+            ? "bg-background/80 backdrop-blur-md border-border/40 shadow-sm h-14 sm:h-16"
+            : "bg-transparent border-transparent"
+        )}
+      >
         <div
-          className="lg:hidden fixed inset-0 bg-black/20 backdrop-blur-sm z-40"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
-
-      {/* 侧边栏 - 移动端滑出 */}
-      {sidebar && (
-        <aside
           className={cn(
-            "fixed left-0 top-0 h-full w-80 bg-background border-r border-border transform transition-transform duration-300 ease-in-out z-40 overflow-y-auto",
-            sidebarOpen ? "translate-x-0" : "-translate-x-full lg:hidden"
+            "mx-auto px-6 lg:px-8 flex items-center justify-between w-full transition-all duration-300",
+            "max-w-7xl"
           )}
         >
-          <div className="p-6">{sidebar}</div>
-        </aside>
-      )}
+          {/* 左侧区域 */}
+          <div className="flex items-center gap-4">
+            {sidebar && (
+              <button
+                onClick={() => setSidebarOpen(!sidebarOpen)}
+                className="lg:hidden inline-flex items-center justify-center p-2 rounded-lg hover:bg-accent transition-colors"
+              >
+                {sidebarOpen ? (
+                  <X className="w-4 h-4 text-foreground" strokeWidth={2} />
+                ) : (
+                  <Menu className="w-4 h-4 text-foreground" strokeWidth={2} />
+                )}
+              </button>
+            )}
+            {leftButtons}
+          </div>
 
-      {/* 顶部左侧按钮 - 与内容区域对齐 */}
-      {leftButtons && (
-        <div className="fixed top-0 left-[-120px] right-0 z-50 pt-6 pointer-events-none">
-          <div className="max-w-7xl mx-auto px-6 lg:px-8 pointer-events-auto">
-            <div className="-ml-1">{leftButtons}</div>
+          {/* 右侧区域 */}
+          <div className="flex items-center gap-2 sm:gap-4">
+            {extraButtons}
+            <ThemeToggle />
+            <Link
+              href="/admin"
+              className="inline-flex items-center justify-center p-2 rounded-lg hover:bg-accent transition-colors"
+              title="后台管理"
+            >
+              <LayoutDashboard
+                className="w-4 h-4 text-foreground"
+                strokeWidth={2}
+              />
+            </Link>
+          </div>
+        </div>
+      </header>
+
+      {/* 主要内容 */}
+      <main className="flex-1 w-full px-4 sm:px-6 pt-16 pb-16 animate-fade-in">
+        <div className="w-full">{children}</div>
+      </main>
+
+      {/* 移动端侧边栏 */}
+      {sidebar && sidebarOpen && (
+        <div className="lg:hidden fixed inset-0 z-50">
+          {/* 背景遮罩 */}
+          <div
+            className="absolute inset-0 bg-black/50"
+            onClick={() => setSidebarOpen(false)}
+          />
+          {/* 侧边栏内容 */}
+          <div className="absolute left-0 top-0 bottom-0 w-80 bg-background shadow-xl p-6 overflow-y-auto">
+            {sidebar}
           </div>
         </div>
       )}
-
-      {/* 顶部右上角按钮 */}
-      <div className="fixed top-0 right-0 z-50 pt-4 pr-6 lg:pr-8 flex items-center gap-2">
-        {/* 额外的按钮（如沉浸式阅读） */}
-        {extraButtons}
-
-        {/* 主题切换按钮 */}
-        <button
-          onClick={toggleTheme}
-          className="inline-flex items-center justify-center p-2 rounded-lg hover:bg-accent transition-colors"
-          title={theme === "light" ? "深色模式" : "浅色模式"}
-        >
-          {mounted &&
-            (theme === "light" ? (
-              <Moon className="w-4 h-4 text-foreground" strokeWidth={2} />
-            ) : (
-              <Sun className="w-4 h-4 text-foreground" strokeWidth={2} />
-            ))}
-        </button>
-
-        {/* 管理按钮 */}
-        <Link
-          href="/admin"
-          className="inline-flex items-center justify-center p-2 rounded-lg hover:bg-accent transition-colors"
-          title="后台管理"
-        >
-          <LayoutDashboard
-            className="w-4 h-4 text-foreground"
-            strokeWidth={2}
-          />
-        </Link>
-      </div>
-
-      {/* 主要内容 */}
-      <main className="flex-1 max-w-7xl mx-auto px-6 lg:px-8 pt-16 pb-8 animate-fade-in w-full">
-        {children}
-      </main>
 
       {/* 极简底部 */}
       <footer className="border-t border-border/40 bg-background mt-auto">

@@ -100,22 +100,26 @@ export function ImmersiveReaderToggle({
       {isImmersive && (
         <div
           ref={containerRef}
-          className="fixed inset-0 z-50 bg-white dark:bg-gray-950 overflow-y-auto"
+          className="fixed inset-0 z-50 bg-white dark:bg-black overflow-y-auto"
         >
           {/* 文章内容区域 */}
-          <div className="max-w-5xl mx-auto px-8 py-16">
+          <div className="max-w-4xl mx-auto px-6 py-16">
             {/* 文章标题 */}
-            <h1 className="text-4xl md:text-5xl font-bold text-gray-900 dark:text-gray-100 mb-8 leading-tight">
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-black text-black dark:text-white mb-12 leading-tight tracking-tighter uppercase">
               {title}
             </h1>
 
             {/* 文章元信息 */}
-            <div className="flex items-center gap-4 text-sm text-gray-600 dark:text-gray-400 mb-12 pb-8 border-b border-gray-200 dark:border-gray-800">
-              <span className="font-medium">
+            <div className="flex items-center gap-6 text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 mb-16 pb-8 border-b-2 border-black dark:border-white">
+              <span className="text-black dark:text-white">
                 {author.profile?.displayName || author.username}
               </span>
-              <span>·</span>
-              <span>{new Date(createdAt).toLocaleDateString("zh-CN")}</span>
+              <span>/</span>
+              <span>
+                {new Date(createdAt)
+                  .toLocaleDateString("zh-CN")
+                  .replace(/\//g, ".")}
+              </span>
             </div>
 
             {/* Markdown 内容 */}
@@ -124,15 +128,14 @@ export function ImmersiveReaderToggle({
             </article>
 
             {/* 底部返回按钮 */}
-            <div className="mt-16 pt-8 border-t border-gray-200 dark:border-gray-800 text-center">
-              <Button
-                variant="outline"
+            <div className="mt-24 pt-12 border-t-2 border-black dark:border-white text-center">
+              <button
                 onClick={exitFullscreen}
-                className="inline-flex items-center gap-2"
+                className="inline-flex items-center gap-3 px-8 py-3 bg-black dark:bg-white text-white dark:text-black font-black uppercase tracking-widest hover:opacity-80 transition-opacity"
               >
-                <X className="w-4 h-4" />
-                <span>退出全屏阅读</span>
-              </Button>
+                <X className="w-5 h-5" />
+                <span>Exit Fullscreen</span>
+              </button>
             </div>
           </div>
         </div>

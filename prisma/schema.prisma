@@ -154,6 +154,9 @@ model Post {
   // === AI 相关关系 ===
   vectorIndex PostVectorIndex?                    // 一对一：文章向量索引
 
+  // === 图片管理关系 ===
+  images Image[]                                   // 一对多：文章关联的图片
+
   // === 数据库映射 ===
   @@map("posts")
 }
@@ -259,6 +262,49 @@ model PostVectorIndex {
 }
 
 // ============================================================================
+// 图片管理系统
+// ============================================================================
+
+/**
+ * 图片类型枚举
+ * 
+ * 区分封面图和内容配图
+ */
+enum ImageType {
+  COVER    // 封面图 - 文章的主视觉图片
+  CONTENT  // 内容配图 - 文章内容中使用的图片
+}
+
+/**
+ * 图片模型 - 文章图片管理
+ * 
+ * 存储文章的封面图和内容配图
+ * 支持本地化图片存储和管理
+ */
+model Image {
+  // === 基础信息 ===
+  id       String    @id @default(cuid())    // 主键
+  filename String                            // 文件名（含扩展名）
+  path     String                            // 完整路径 /images/posts/{slug}/xxx.jpg
+  size     Int                               // 文件大小（字节）
+  mimeType String                            // MIME类型（如 image/jpeg）
+  type     ImageType @default(CONTENT)       // 图片类型：封面或内容配图
+  
+  // === 关系字段 ===
+  postId   String                            // 外键，指向文章
+  post     Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
+  
+  // === 时间戳 ===
+  createdAt DateTime @default(now())         // 创建时间
+  updatedAt DateTime @updatedAt              // 更新时间
+  
+  // === 数据库映射 ===
+  @@map("images")
+  @@index([postId])
+  @@index([type])
+}
+
+// ============================================================================
 // 数据库设计说明
 // ============================================================================
 
@@ -270,6 +316,7 @@ model PostVectorIndex {
  * Post N ←→ 1 Category
  * Post N ←→ M Tag (通过 PostTag)
  * Post 1 ←→ 1 PostVectorIndex
+ * Post 1 ←→ N Image
  * 
  * 索引策略：
  * - 所有 @unique 字段自动创建唯一索引
@@ -280,4 +327,5 @@ model PostVectorIndex {
  * - 使用 onDelete: Cascade 确保数据一致性
  * - 用户删除时，相关文章和资料也会被删除
  * - 分类删除时，文章的 categoryId 会被设为 null
+ * - 文章删除时，关联的图片记录和文件也会被删除
  */

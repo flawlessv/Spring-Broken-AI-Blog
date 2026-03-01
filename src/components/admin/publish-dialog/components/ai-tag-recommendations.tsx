@@ -30,8 +30,8 @@ export function AITagRecommendations({
 
   if (hasRecommendations) {
     return (
-      <div className="p-3 bg-primary/5 border border-primary/20 rounded-lg space-y-2">
-        <div className="flex items-center gap-2 text-xs text-primary font-medium">
+      <div className="p-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg space-y-2">
+        <div className="flex items-center gap-2 text-xs text-gray-900 dark:text-gray-100 font-medium">
           <span>✨ AI 推荐标签</span>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -50,8 +50,8 @@ export function AITagRecommendations({
                 onClick={() => onToggle(existingTag.id)}
                 className={`px-2 py-1 text-xs rounded-full transition-colors flex items-center gap-1 ${
                   isSelected
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-primary/10 text-primary hover:bg-primary/20"
+                    ? "bg-black dark:bg-white text-white dark:text-black"
+                    : "bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600"
                 }`}
               >
                 🏷️ {tagName}
@@ -65,7 +65,7 @@ export function AITagRecommendations({
               type="button"
               disabled={isCreating}
               onClick={() => onCreate(tagName)}
-              className="px-2 py-1 text-xs rounded-full transition-colors flex items-center gap-1 bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-800 dark:text-green-200 disabled:opacity-50"
+              className="px-2 py-1 text-xs rounded-full transition-colors flex items-center gap-1 bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-600 disabled:opacity-50"
             >
               ➕ {tagName}
               <span className="opacity-70">(新建)</span>
@@ -85,7 +85,7 @@ export function AITagRecommendations({
         type="button"
         onClick={onGenerate}
         disabled={isGenerating}
-        className="w-full p-2 text-xs border border-dashed border-primary/30 rounded-lg text-primary hover:bg-primary/5 transition-colors flex items-center justify-center gap-1 disabled:opacity-50"
+        className="w-full p-2 text-xs border border-dashed border-gray-300 dark:border-gray-700 rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors flex items-center justify-center gap-1 disabled:opacity-50"
       >
         {isGenerating ? (
           <>

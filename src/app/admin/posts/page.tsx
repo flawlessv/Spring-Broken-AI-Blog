@@ -12,7 +12,6 @@ import CleanAdminLayout from "@/components/admin/clean-admin-layout";
 import UnifiedPostsTable from "@/components/admin/unified-posts-table";
 import { Button } from "@/components/ui/button";
 import {
-  Plus,
   Download,
   Loader2,
   Upload,
@@ -23,10 +22,6 @@ import {
 import { useToast } from "@/hooks/use-toast";
 
 export default function PostsPage() {
-  const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [categoryFilter, setCategoryFilter] = useState("all");
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [exportingAll, setExportingAll] = useState(false);
   const [importing, setImporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -151,18 +146,20 @@ export default function PostsPage() {
           }
         }
 
+        // 显示结果
         toast({
           title: "导入完成",
           description,
-          variant: "default",
         });
 
-        // 显示详细结果
+        // 如果有跳过的文件，显示详细信息
         if (result.results.errors.length > 0) {
-          const errorMsg = result.results.errors.slice(0, 3).join("\n");
+          // 只显示前 5 个错误
+          const errorPreview = result.results.errors.slice(0, 5).join("\n");
+
           toast({
-            title: "部分文件导入失败",
-            description: `错误信息:\n${errorMsg}${result.results.errors.length > 3 ? "\n..." : ""}`,
+            title: `跳过了 ${result.results.skipped} 个文件`,
+            description: `${errorPreview}${result.results.errors.length > 5 ? `\n...还有 ${result.results.errors.length - 5} 个` : ""}`,
             variant: "destructive",
           });
         }
@@ -285,13 +282,7 @@ export default function PostsPage() {
 
         {/* 文章列表 */}
         <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
-          <UnifiedPostsTable
-            searchQuery={searchQuery}
-            statusFilter={statusFilter}
-            categoryFilter={categoryFilter}
-            onSelectionChange={setSelectedIds}
-            enableTableFilters={true}
-          />
+          <UnifiedPostsTable enableTableFilters={true} />
         </div>
 
         {/* 隐藏的文件输入框 - 用于选择多个文件 */}

@@ -5,8 +5,9 @@
  * 性能优化：添加useMemo、useCallback、防抖等优化
  */
 
-import { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { zhCN } from "date-fns/locale";
 import {
@@ -15,7 +16,6 @@ import {
   Trash2,
   Star,
   Clock,
-  User,
   Calendar,
   FileText,
   Plus,
@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { DeleteConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -35,6 +36,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { ModernTable } from "@/components/ui/modern-table";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 
 // 文章数据类型
 interface Post {
@@ -79,6 +81,22 @@ interface PostsResponse {
   };
 }
 
+interface OptionItem {
+  label: string;
+  value: string;
+  color?: string;
+}
+
+interface TagListResponse {
+  tags?: Array<{ id?: unknown; name?: unknown; color?: unknown }>;
+}
+
+interface CategoryListResponse {
+  categories?: Array<{ name?: unknown; color?: unknown }>;
+}
+
+type TableFilters = Record<string, string | string[] | null | undefined>;
+
 interface UnifiedPostsTableProps {
   searchQuery?: string;
   statusFilter?: string;
@@ -97,15 +115,16 @@ export default function UnifiedPostsTable({
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [tableSearchQuery, setTableSearchQuery] = useState(searchQuery || "");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [exporting, setExporting] = useState(false);
-  const [tableFilters, setTableFilters] = useState<Record<string, any>>({});
-  const [availableTags, setAvailableTags] = useState<
-    { label: string; value: string; color?: string }[]
-  >([]);
-  const [availableCategories, setAvailableCategories] = useState<
-    { label: string; value: string; color?: string }[]
-  >([]);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [isBatchDeleting, setIsBatchDeleting] = useState(false);
+  const [tableFilters, setTableFilters] = useState<TableFilters>({});
+  const [availableTags, setAvailableTags] = useState<OptionItem[]>([]);
+  const [availableCategories, setAvailableCategories] = useState<OptionItem[]>(
+    []
+  );
   const [pagination, setPagination] = useState({
     page: 1,
     limit: 10,
@@ -116,25 +135,31 @@ export default function UnifiedPostsTable({
   });
 
   const { toast } = useToast();
-
-  // 优化：使用useRef存储防抖定时器
-  const debounceRef = useRef<NodeJS.Timeout>();
+  const router = useRouter();
 
   // 优化：使用useCallback缓存事件处理函数
   const fetchAvailableTags = useCallback(async () => {
     try {
       const response = await fetch("/api/admin/tags");
       if (response.ok) {
-        const data = await response.json();
-        const tags = (data.tags || []).map((tag: any) => ({
-          label: tag.name,
-          value: tag.name,
-          color: tag.color,
-        }));
+        const data = (await response.json()) as TagListResponse;
+        const tags = (data.tags || [])
+          .filter(
+            (tag): tag is { id: string; name: string; color?: string } =>
+              typeof tag?.id === "string" &&
+              tag.id.trim().length > 0 &&
+              typeof tag?.name === "string" &&
+              tag.name.trim().length > 0
+          )
+          .map((tag) => ({
+            label: tag.name,
+            value: tag.id,
+            color: typeof tag.color === "string" ? tag.color : undefined,
+          }));
         setAvailableTags(tags);
       }
-    } catch (error) {
-      console.error("获取标签失败:", error);
+    } catch (fetchError) {
+      console.error("获取标签失败:", fetchError);
     }
   }, []);
 
@@ -142,16 +167,23 @@ export default function UnifiedPostsTable({
     try {
       const response = await fetch("/api/admin/categories");
       if (response.ok) {
-        const data = await response.json();
-        const categories = (data.categories || []).map((category: any) => ({
-          label: category.name,
-          value: category.name,
-          color: category.color,
-        }));
+        const data = (await response.json()) as CategoryListResponse;
+        const categories = (data.categories || [])
+          .filter(
+            (category): category is { name: string; color?: string } =>
+              typeof category?.name === "string" &&
+              category.name.trim().length > 0
+          )
+          .map((category) => ({
+            label: category.name,
+            value: category.name,
+            color:
+              typeof category.color === "string" ? category.color : undefined,
+          }));
         setAvailableCategories(categories);
       }
-    } catch (error) {
-      console.error("获取分类失败:", error);
+    } catch (fetchError) {
+      console.error("获取分类失败:", fetchError);
     }
   }, []);
 
@@ -164,14 +196,18 @@ export default function UnifiedPostsTable({
         limit: pagination.limit.toString(),
       });
 
-      if (searchQuery) params.set("search", searchQuery);
+      if (tableSearchQuery.trim())
+        params.set("search", tableSearchQuery.trim());
       if (statusFilter && statusFilter !== "all")
         params.set("status", statusFilter);
       if (categoryFilter && categoryFilter !== "all")
         params.set("categoryId", categoryFilter);
 
       // 处理表头筛选
-      if (tableFilters.title && tableFilters.title.trim()) {
+      if (
+        typeof tableFilters.title === "string" &&
+        tableFilters.title.trim().length > 0
+      ) {
         params.set("search", tableFilters.title.trim());
       }
       if (
@@ -213,7 +249,7 @@ export default function UnifiedPostsTable({
       setLoading(false);
     }
   }, [
-    searchQuery,
+    tableSearchQuery,
     statusFilter,
     categoryFilter,
     pagination.page,
@@ -221,25 +257,20 @@ export default function UnifiedPostsTable({
     tableFilters,
   ]);
 
-  // 优化：防抖版本的fetchPosts，用于搜索等频繁触发的场景
-  const debouncedFetchPosts = useCallback(
-    (delay = 300) => {
-      if (debounceRef.current) {
-        clearTimeout(debounceRef.current);
-      }
-      debounceRef.current = setTimeout(() => {
-        fetchPosts();
-      }, delay);
-    },
-    [fetchPosts]
-  );
-
   // 处理表头筛选
-  const handleTableFilters = useCallback((filters: Record<string, any>) => {
-    console.log("处理表头筛选:", filters);
+  const handleTableFilters = useCallback((filters: TableFilters) => {
     setTableFilters(filters);
     setPagination((prev) => ({ ...prev, page: 1 })); // 重置到第一页
   }, []);
+
+  const handleSearch = useCallback((query: string) => {
+    setTableSearchQuery(query);
+    setPagination((prev) => ({ ...prev, page: 1 }));
+  }, []);
+
+  useEffect(() => {
+    setTableSearchQuery(searchQuery || "");
+  }, [searchQuery]);
 
   useEffect(() => {
     fetchPosts();
@@ -261,7 +292,7 @@ export default function UnifiedPostsTable({
   const getStatusBadge = useCallback((post: Post) => {
     if (post.featured) {
       return (
-        <Badge className="bg-gradient-to-r from-yellow-400 to-orange-400 text-white border-0">
+        <Badge className="bg-black dark:bg-white text-white dark:text-black border-0">
           <Star className="h-3 w-3 mr-1" />
           精选
         </Badge>
@@ -269,13 +300,13 @@ export default function UnifiedPostsTable({
     }
     if (post.published) {
       return (
-        <Badge className="bg-gradient-to-r from-green-500 to-emerald-500 text-white border-0">
+        <Badge className="bg-gray-600 dark:bg-gray-400 text-white dark:text-black border-0">
           已发布
         </Badge>
       );
     }
     return (
-      <Badge variant="secondary" className="text-gray-600">
+      <Badge variant="secondary" className="text-gray-600 dark:text-gray-400">
         <Clock className="h-3 w-3 mr-1" />
         草稿
       </Badge>
@@ -301,7 +332,7 @@ export default function UnifiedPostsTable({
         } else {
           throw new Error("操作失败");
         }
-      } catch (error) {
+      } catch {
         toast({
           title: "操作失败",
           description: "请稍后重试",
@@ -330,7 +361,7 @@ export default function UnifiedPostsTable({
         } else {
           throw new Error("操作失败");
         }
-      } catch (error) {
+      } catch {
         toast({
           title: "操作失败",
           description: "请稍后重试",
@@ -358,7 +389,7 @@ export default function UnifiedPostsTable({
         } else {
           throw new Error("删除失败");
         }
-      } catch (error) {
+      } catch {
         toast({
           title: "删除失败",
           description: "请稍后重试",
@@ -370,29 +401,50 @@ export default function UnifiedPostsTable({
   );
 
   const handleBatchDelete = useCallback(
-    async (selectedIds: string[]) => {
+    async (ids: string[]) => {
       try {
-        await Promise.all(
-          selectedIds.map((id) =>
-            fetch(`/api/admin/posts/${id}`, { method: "DELETE" })
-          )
+        const results = await Promise.all(
+          ids.map(async (id) => {
+            const response = await fetch(`/api/admin/posts/${id}`, {
+              method: "DELETE",
+            });
+            return { id, ok: response.ok };
+          })
         );
 
-        toast({
-          title: "批量删除成功",
-          description: `已删除 ${selectedIds.length} 篇文章`,
-          variant: "success",
-        });
+        const failedCount = results.filter((item) => !item.ok).length;
+        const successCount = results.length - failedCount;
+
+        if (successCount > 0) {
+          toast({
+            title: failedCount === 0 ? "批量删除成功" : "批量删除部分成功",
+            description:
+              failedCount === 0
+                ? `已删除 ${successCount} 篇文章`
+                : `成功删除 ${successCount} 篇，失败 ${failedCount} 篇`,
+            variant: failedCount === 0 ? "success" : "default",
+          });
+        }
+
+        if (failedCount > 0 && successCount === 0) {
+          toast({
+            title: "批量删除失败",
+            description: "删除请求均未成功，请稍后重试",
+            variant: "destructive",
+          });
+        }
 
         setSelectedIds([]);
         onSelectionChange?.([]);
         await fetchPosts();
-      } catch (error) {
+      } catch {
         toast({
           title: "批量删除失败",
           description: "请稍后重试",
           variant: "destructive",
         });
+      } finally {
+        setIsBatchDeleting(false);
       }
     },
     [toast, onSelectionChange, fetchPosts]
@@ -457,9 +509,9 @@ export default function UnifiedPostsTable({
   // 优化：使用useMemo缓存静态配置
   const statusOptions = useMemo(
     () => [
-      { label: "已发布", value: "published", color: "#10B981" },
-      { label: "草稿", value: "draft", color: "#6B7280" },
-      { label: "精选", value: "featured", color: "#F59E0B" },
+      { label: "已发布", value: "published" },
+      { label: "草稿", value: "draft" },
+      { label: "精选", value: "featured" },
     ],
     []
   );
@@ -475,16 +527,13 @@ export default function UnifiedPostsTable({
           ? {
               type: "text" as const,
               placeholder: "搜索文章标题...",
-              onFilter: (value: string) => {
-                console.log("Title filter:", value);
-              },
             }
           : undefined,
         render: (_: unknown, post: Post) => (
           <div className="min-w-0">
             <Link
               href={`/admin/posts/${post.id}/edit`}
-              className="text-base font-semibold text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400 transition-colors block truncate"
+              className="text-base font-semibold text-gray-900 dark:text-gray-100 hover:opacity-70 transition-colors block truncate"
             >
               {post.title}
             </Link>
@@ -496,12 +545,6 @@ export default function UnifiedPostsTable({
               </div>
               {post.category && (
                 <div className="flex items-center space-x-1">
-                  <div
-                    className="w-2 h-2 rounded-full"
-                    style={{
-                      backgroundColor: post.category.color || "#6B7280",
-                    }}
-                  />
                   <span>{post.category.name}</span>
                 </div>
               )}
@@ -518,23 +561,14 @@ export default function UnifiedPostsTable({
               type: "multiselect" as const,
               options: availableCategories,
               placeholder: "筛选分类",
-              onFilter: (value: string) => {
-                console.log("Category filter:", value);
-              },
             }
           : undefined,
         render: (_: unknown, post: Post) => (
           <div className="flex items-center space-x-2">
             {post.category ? (
-              <>
-                <div
-                  className="w-3 h-3 rounded-full"
-                  style={{ backgroundColor: post.category.color || "#6B7280" }}
-                />
-                <span className="text-sm text-gray-700 dark:text-gray-300 truncate">
-                  {post.category.name}
-                </span>
-              </>
+              <span className="text-sm text-gray-700 dark:text-gray-300 truncate">
+                {post.category.name}
+              </span>
             ) : (
               <span className="text-sm text-gray-400 dark:text-gray-500">
                 -
@@ -552,9 +586,6 @@ export default function UnifiedPostsTable({
               type: "multiselect" as const,
               options: availableTags,
               placeholder: "筛选标签",
-              onFilter: (value: string) => {
-                console.log("Tags filter:", value);
-              },
             }
           : undefined,
         render: (_: unknown, post: Post) => (
@@ -562,8 +593,8 @@ export default function UnifiedPostsTable({
             {post.tags.slice(0, 3).map((tag) => (
               <Badge
                 key={tag.id}
-                style={{ backgroundColor: tag.color || "#6B7280" }}
-                className="text-white text-xs px-2 py-0.5 rounded-lg"
+                variant="secondary"
+                className="text-xs px-2 py-0.5 rounded-lg"
               >
                 {tag.name}
               </Badge>
@@ -591,9 +622,6 @@ export default function UnifiedPostsTable({
               type: "multiselect" as const,
               options: statusOptions,
               placeholder: "筛选状态",
-              onFilter: (value: string) => {
-                console.log("Status filter:", value);
-              },
             }
           : undefined,
         render: (_: unknown, post: Post) => getStatusBadge(post),
@@ -631,7 +659,7 @@ export default function UnifiedPostsTable({
             <Button
               variant="ghost"
               size="sm"
-              className="h-8 px-3 text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950"
+              className="h-8 px-3 text-gray-600 dark:text-gray-400 hover:text-black dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800"
               onClick={() => window.open(`/posts/${post.slug}`, "_blank")}
             >
               <Eye className="h-4 w-4 mr-1" />
@@ -640,10 +668,8 @@ export default function UnifiedPostsTable({
             <Button
               variant="ghost"
               size="sm"
-              className="h-8 px-3 text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950"
-              onClick={() =>
-                (window.location.href = `/admin/posts/${post.id}/edit`)
-              }
+              className="h-8 px-3 text-gray-600 dark:text-gray-400 hover:text-black dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800"
+              onClick={() => router.push(`/admin/posts/${post.id}/edit`)}
             >
               <Edit className="h-4 w-4 mr-1" />
               编辑
@@ -668,11 +694,12 @@ export default function UnifiedPostsTable({
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   onClick={() => handleTogglePublish(post)}
-                  className={`rounded-lg ${
+                  className={cn(
+                    "rounded-lg",
                     post.published
-                      ? "text-orange-600 dark:text-orange-400"
-                      : "text-green-600 dark:text-green-400"
-                  }`}
+                      ? "text-gray-600 dark:text-gray-400"
+                      : "text-black dark:text-white font-bold"
+                  )}
                 >
                   {post.published ? "取消发布" : "发布"}
                 </DropdownMenuItem>
@@ -684,7 +711,7 @@ export default function UnifiedPostsTable({
                   {post.featured ? "取消精选" : "设为精选"}
                 </DropdownMenuItem>
                 <DropdownMenuItem
-                  onClick={() => handleDelete(post)}
+                  onClick={() => setDeleteId(post.id)}
                   className="rounded-lg text-red-600 dark:text-red-400"
                 >
                   <Trash2 className="h-4 w-4 mr-2" />
@@ -705,51 +732,8 @@ export default function UnifiedPostsTable({
       getStatusBadge,
       handleTogglePublish,
       handleToggleFeature,
-      handleDelete,
+      router,
     ]
-  );
-
-  // 优化：使用useMemo缓存actions配置
-  const actions = useMemo(
-    () => [
-      {
-        key: "preview",
-        label: "预览",
-        icon: <Eye className="h-4 w-4" />,
-        onClick: (post: Post) => {
-          window.open(`/${post.slug}`, "_blank");
-        },
-      },
-      {
-        key: "edit",
-        label: "编辑",
-        icon: <Edit className="h-4 w-4" />,
-        onClick: (post: Post) => {
-          window.location.href = `/admin/posts/${post.id}/edit`;
-        },
-      },
-      {
-        key: "publish",
-        label: (post: Post) => (post.published ? "取消发布" : "发布"),
-        onClick: handleTogglePublish,
-        variant: (post: Post) =>
-          post.published ? "warning" : ("success" as const),
-      },
-      {
-        key: "feature",
-        label: (post: Post) => (post.featured ? "取消精选" : "设为精选"),
-        icon: <Star className="h-4 w-4" />,
-        onClick: handleToggleFeature,
-      },
-      {
-        key: "delete",
-        label: "删除",
-        icon: <Trash2 className="h-4 w-4" />,
-        onClick: handleDelete,
-        variant: "danger" as const,
-      },
-    ],
-    [handleTogglePublish, handleToggleFeature, handleDelete]
   );
 
   // 优化：使用useMemo缓存batchActions配置
@@ -768,52 +752,74 @@ export default function UnifiedPostsTable({
       },
       {
         label: "批量删除",
-        onClick: handleBatchDelete,
+        onClick: () => setIsBatchDeleting(true),
         variant: "danger" as const,
         icon: <Trash2 className="h-4 w-4 mr-2" />,
       },
     ],
-    [exporting, handleExportSelected, handleBatchDelete]
+    [exporting, handleExportSelected]
   );
 
   return (
-    <ModernTable
-      data={posts}
-      columns={columns}
-      loading={loading}
-      error={error}
-      searchable={true}
-      searchPlaceholder="搜索文章标题..."
-      onSearch={fetchPosts}
-      filterable={enableTableFilters}
-      onFilterChange={(filters) => {
-        console.log("Table filters changed:", filters);
-        // 处理筛选逻辑
-        handleTableFilters(filters);
-      }}
-      selectable={true}
-      selectedIds={selectedIds}
-      onSelectionChange={(ids) => {
-        setSelectedIds(ids);
-        onSelectionChange?.(ids);
-      }}
-      createButton={{
-        label: "新建文章",
-        href: "/admin/posts/new",
-        icon: <Plus className="mr-2 h-4 w-4" />,
-      }}
-      batchActions={batchActions}
-      pagination={{
-        current: pagination.page,
-        total: pagination.total,
-        pageSize: pagination.limit,
-        onChange: (page) => setPagination((prev) => ({ ...prev, page })),
-      }}
-      emptyIcon={<FileText className="h-10 w-10 text-gray-400" />}
-      emptyTitle="暂无文章"
-      emptyDescription="开始创建您的第一篇文章吧"
-      getRecordId={(post) => post.id}
-      onRetry={fetchPosts}
-    />
+    <>
+      {/* 确认删除对话框 */}
+      <DeleteConfirmDialog
+        open={!!deleteId}
+        onClose={() => setDeleteId(null)}
+        onConfirm={async () => {
+          if (deleteId) {
+            const post = posts.find((p) => p.id === deleteId);
+            if (post) await handleDelete(post);
+          }
+        }}
+        itemType="文章"
+        itemName={posts.find((p) => p.id === deleteId)?.title || ""}
+      />
+
+      <DeleteConfirmDialog
+        open={isBatchDeleting}
+        onClose={() => setIsBatchDeleting(false)}
+        onConfirm={async () => {
+          await handleBatchDelete(selectedIds);
+        }}
+        itemType="文章"
+        itemName={`选中的 ${selectedIds.length} 篇文章`}
+      />
+
+      <ModernTable<Post>
+        data={posts}
+        columns={columns}
+        loading={loading}
+        error={error}
+        searchable={true}
+        searchPlaceholder="搜索文章标题..."
+        onSearch={handleSearch}
+        filterable={enableTableFilters}
+        onFilterChange={handleTableFilters}
+        selectable={true}
+        selectedIds={selectedIds}
+        onSelectionChange={(ids) => {
+          setSelectedIds(ids);
+          onSelectionChange?.(ids);
+        }}
+        createButton={{
+          label: "新建文章",
+          href: "/admin/posts/new",
+          icon: <Plus className="mr-2 h-4 w-4" />,
+        }}
+        batchActions={batchActions}
+        pagination={{
+          current: pagination.page,
+          total: pagination.total,
+          pageSize: pagination.limit,
+          onChange: (page) => setPagination((prev) => ({ ...prev, page })),
+        }}
+        emptyIcon={<FileText className="h-10 w-10 text-gray-400" />}
+        emptyTitle="暂无文章"
+        emptyDescription="开始创建您的第一篇文章吧"
+        getRecordId={(post) => post.id}
+        onRetry={fetchPosts}
+      />
+    </>
   );
 }

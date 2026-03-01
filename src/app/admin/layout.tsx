@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { ThemeProvider } from "@/components/providers/theme-provider";
 
 export const metadata: Metadata = {
   title: "管理后台 - Spring Broken AI Blog",
@@ -18,5 +17,5 @@ export default function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return <ThemeProvider>{children}</ThemeProvider>;
+  return <>{children}</>;
 }

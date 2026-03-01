@@ -22,13 +22,12 @@ import {
   Menu,
   X,
   Sparkles,
-  MessageSquare,
+  Image as ImageIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { LoadingSpinner } from "@/components/ui/loading";
+import { SimpleLoading } from "@/components/ui/loading";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
-import RAGChat from "@/components/admin/rag-chat";
 
 interface CleanAdminLayoutProps {
   children: ReactNode;
@@ -83,7 +82,7 @@ export default function CleanAdminLayout({ children }: CleanAdminLayoutProps) {
   if (status === "loading") {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <LoadingSpinner />
+        <SimpleLoading />
       </div>
     );
   }
@@ -127,6 +126,12 @@ export default function CleanAdminLayout({ children }: CleanAdminLayoutProps) {
       current: pathname?.startsWith("/admin/tags"),
     },
     {
+      name: "图片管理",
+      href: "/admin/images",
+      icon: ImageIcon,
+      current: pathname?.startsWith("/admin/images"),
+    },
+    {
       name: "个人信息",
       href: "/admin/profile",
       icon: User,
@@ -158,8 +163,8 @@ export default function CleanAdminLayout({ children }: CleanAdminLayoutProps) {
             </Button>
 
             <div className="flex items-center space-x-2.5">
-              <div className="w-9 h-9 bg-gradient-to-br from-purple-600 to-pink-600 rounded-xl flex items-center justify-center shadow-md">
-                <Sparkles className="h-4.5 w-4.5 text-white" />
+              <div className="w-9 h-9 bg-black dark:bg-white rounded-xl flex items-center justify-center shadow-md">
+                <Sparkles className="h-4.5 w-4.5 text-white dark:text-black" />
               </div>
               <div className="flex items-center space-x-2">
                 <h1 className="text-base font-semibold text-gray-900 dark:text-gray-100">
@@ -177,23 +182,8 @@ export default function CleanAdminLayout({ children }: CleanAdminLayoutProps) {
 
           {/* 右侧 */}
           <div className="flex items-center gap-2">
-            {/* 知识问答 */}
-            <RAGChat
-              trigger={
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-9 px-3 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 gap-1.5"
-                  title="知识库问答"
-                >
-                  <MessageSquare className="h-4 w-4" />
-                  <span className="hidden sm:inline text-sm">知识库问答</span>
-                </Button>
-              }
-            />
-
             {/* 主题切换按钮 */}
-            <ThemeToggle className="h-9 w-9 p-0 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100" />
+            <ThemeToggle />
 
             <Link href="/">
               <Button
@@ -214,11 +204,11 @@ export default function CleanAdminLayout({ children }: CleanAdminLayoutProps) {
                     <img
                       src={avatarUrl}
                       alt={session.user.displayName || session.user.username}
-                      className="w-9 h-9 rounded-full object-cover border-2 border-gray-200 dark:border-gray-700 group-hover:border-purple-400 dark:group-hover:border-purple-500 transition-all shadow-sm"
+                      className="w-9 h-9 rounded-full object-cover border-2 border-gray-200 dark:border-gray-700 group-hover:border-black dark:group-hover:border-white transition-all shadow-sm"
                     />
                   ) : (
-                    <div className="w-9 h-9 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-full flex items-center justify-center shadow-sm border-2 border-gray-200 dark:border-gray-700 group-hover:border-purple-400 dark:group-hover:border-purple-500 transition-all">
-                      <User className="h-4.5 w-4.5 text-white" />
+                    <div className="w-9 h-9 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center shadow-sm border-2 border-gray-200 dark:border-gray-700 group-hover:border-black dark:group-hover:border-white transition-all">
+                      <User className="h-4.5 w-4.5 text-gray-500 dark:text-gray-400" />
                     </div>
                   )}
                 </div>
@@ -278,7 +268,7 @@ export default function CleanAdminLayout({ children }: CleanAdminLayoutProps) {
                       className={cn(
                         "group flex items-center px-3 py-3 text-[15px] font-medium rounded-lg transition-all duration-200",
                         item.current
-                          ? "bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-md shadow-purple-200 dark:shadow-purple-900/20"
+                          ? "bg-black dark:bg-white text-white dark:text-black shadow-md shadow-black/10 dark:shadow-white/10"
                           : "text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-800"
                       )}
                     >
@@ -286,7 +276,7 @@ export default function CleanAdminLayout({ children }: CleanAdminLayoutProps) {
                         className={cn(
                           "mr-3 h-5 w-5 transition-transform",
                           item.current
-                            ? "text-white"
+                            ? "text-white dark:text-black"
                             : "text-gray-400 dark:text-gray-500 group-hover:text-gray-600 dark:group-hover:text-gray-300 group-hover:scale-110"
                         )}
                       />

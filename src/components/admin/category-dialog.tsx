@@ -41,54 +41,20 @@ const categorySchema = z.object({
     .min(1, "URL slug不能为空")
     .max(50, "URL slug不能超过50个字符"),
   description: z.string().max(200, "描述不能超过200个字符").optional(),
-  color: z
-    .string()
-    .regex(/^#[0-9A-Fa-f]{6}$/, "请输入有效的颜色代码")
-    .optional()
-    .or(z.literal("")),
-  icon: z.string().max(10, "图标不能超过10个字符").optional(),
-  sortOrder: z.number().int().min(0).default(0),
 });
 
 type CategoryFormInput = z.input<typeof categorySchema>;
 type CategoryFormOutput = z.output<typeof categorySchema>;
 
-// 预设颜色选项
-const colorOptions = [
-  "#3B82F6", // Blue
-  "#10B981", // Emerald
-  "#8B5CF6", // Violet
-  "#F59E0B", // Amber
-  "#EF4444", // Red
-  "#EC4899", // Pink
-  "#6366F1", // Indigo
-  "#14B8A6", // Teal
-];
-
-// 预设图标选项
-const iconOptions = [
-  "💻",
-  "📱",
-  "🎨",
-  "📚",
-  "🎵",
-  "🎬",
-  "🎮",
-  "🍔",
-  "✈️",
-  "🏠",
-  "💡",
-  "🔧",
-  "📝",
-  "📊",
-  "🌟",
-  "🚀",
-];
-
 interface CategoryDialogProps {
   open: boolean;
   onClose: () => void;
-  category?: any;
+  category?: {
+    id: string;
+    name: string;
+    slug: string;
+    description?: string | null;
+  } | null;
 }
 
 export default function CategoryDialog({
@@ -107,15 +73,11 @@ export default function CategoryDialog({
       name: "",
       slug: "",
       description: "",
-      color: "",
-      icon: "",
-      sortOrder: 0,
     },
   });
 
   const { watch, setValue, reset } = form;
   const name = watch("name");
-  const color = watch("color");
 
   // 自动生成 slug
   useEffect(() => {
@@ -137,18 +99,12 @@ export default function CategoryDialog({
           name: category.name,
           slug: category.slug,
           description: category.description || "",
-          color: category.color || "",
-          icon: category.icon || "",
-          sortOrder: category.sortOrder,
         });
       } else {
         reset({
           name: "",
           slug: "",
           description: "",
-          color: "",
-          icon: "",
-          sortOrder: 0,
         });
       }
     }
@@ -243,79 +199,6 @@ export default function CategoryDialog({
                       {...field}
                     />
                   </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            {/* 颜色选择 */}
-            <FormField
-              control={form.control}
-              name="color"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>颜色（可选）</FormLabel>
-                  <div className="space-y-2">
-                    <div className="flex items-center space-x-2">
-                      <FormControl>
-                        <Input
-                          placeholder="#3B82F6"
-                          {...field}
-                          className="w-24 font-mono"
-                        />
-                      </FormControl>
-                      {color && (
-                        <div
-                          className="w-8 h-8 rounded border border-border"
-                          style={{ backgroundColor: color }}
-                        />
-                      )}
-                    </div>
-                    <div className="flex flex-wrap gap-1">
-                      {colorOptions.map((colorOption) => (
-                        <button
-                          key={colorOption}
-                          type="button"
-                          className="w-6 h-6 rounded border border-border hover:scale-110 transition-transform"
-                          style={{ backgroundColor: colorOption }}
-                          onClick={() => setValue("color", colorOption)}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            {/* 图标选择 */}
-            <FormField
-              control={form.control}
-              name="icon"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>图标（可选）</FormLabel>
-                  <div className="space-y-2">
-                    <FormControl>
-                      <Input
-                        placeholder="💻"
-                        {...field}
-                        className="w-16 text-center"
-                      />
-                    </FormControl>
-                    <div className="flex flex-wrap gap-1">
-                      {iconOptions.map((iconOption) => (
-                        <button
-                          key={iconOption}
-                          type="button"
-                          className="w-8 h-8 rounded border border-border hover:bg-accent flex items-center justify-center text-lg transition-colors"
-                          onClick={() => setValue("icon", iconOption)}
-                        >
-                          {iconOption}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
                   <FormMessage />
                 </FormItem>
               )}

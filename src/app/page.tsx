@@ -1,23 +1,112 @@
 "use client";
 
+import { useState, useEffect, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import PublicLayout from "@/components/layout/public-layout";
 import AdminProfileCard from "@/components/profile/admin-profile-card";
 import PostList from "@/components/posts/post-list";
+import { SimpleLoading } from "@/components/ui/loading";
 
-export default function Home() {
+function HomeContent() {
+  const searchParams = useSearchParams();
+  const categorySlug = searchParams.get("category");
+
+  const [profileData, setProfileData] = useState<any>(null);
+  const [categories, setCategories] = useState<any[]>([]);
+  const [postsData, setPostsData] = useState<any[]>([]);
+  const [hasMore, setHasMore] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchData() {
+      // 切换分类时显示加载状态
+      setIsLoading(true);
+      try {
+        // 并行请求所有数据
+        const [profileRes, categoriesRes, postsRes] = await Promise.all([
+          fetch("/api/profile"),
+          fetch("/api/categories"),
+          fetch(
+            `/api/posts?page=1&limit=10${
+              categorySlug ? `&category=${categorySlug}` : ""
+            }`
+          ),
+        ]);
+
+        if (profileRes.ok) {
+          const profile = await profileRes.json();
+          setProfileData(profile.profile);
+        }
+
+        if (categoriesRes.ok) {
+          const data = await categoriesRes.json();
+          setCategories(data.categories || []);
+        }
+
+        if (postsRes.ok) {
+          const data = await postsRes.json();
+          setPostsData(data.posts);
+          // 判断是否还有更多数据
+          setHasMore(data.pagination.current < data.pagination.pages);
+        }
+      } catch (error) {
+        console.error("获取数据失败:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    fetchData();
+  }, [categorySlug]);
+
+  if (isLoading) {
+    return (
+      <PublicLayout>
+        <SimpleLoading />
+      </PublicLayout>
+    );
+  }
+
   return (
-    <PublicLayout sidebar={<AdminProfileCard />}>
-      <div className="flex flex-col lg:grid lg:grid-cols-12 gap-6">
+    <PublicLayout
+      sidebar={
+        profileData && (
+          <AdminProfileCard profile={profileData} categories={categories} />
+        )
+      }
+    >
+      <div className="flex flex-col lg:grid lg:grid-cols-[280px_1fr] gap-8 lg:gap-16 lg:ml-32">
         {/* 桌面端：个人信息在左侧 */}
-        <aside className="hidden lg:block lg:col-span-3 order-1 lg:order-none lg:pl-20">
-          <AdminProfileCard />
+        <aside className="hidden lg:block order-1 lg:order-none pt-4">
+          <AdminProfileCard profile={profileData} categories={categories} />
         </aside>
 
         {/* 文章列表 */}
-        <main className="lg:col-span-9 order-2 lg:order-none">
-          <PostList />
-        </main>
+        <section className="order-2 lg:order-none max-w-2xl">
+          <PostList
+            key={categorySlug || "all"}
+            initialPosts={postsData}
+            initialHasMore={hasMore}
+            categorySlug={categorySlug || undefined}
+          />
+        </section>
       </div>
+    </PublicLayout>
+  );
+}
+
+export default function Home() {
+  return (
+    <Suspense fallback={<LoadingWrapper />}>
+      <HomeContent />
+    </Suspense>
+  );
+}
+
+function LoadingWrapper() {
+  return (
+    <PublicLayout>
+      <SimpleLoading />
     </PublicLayout>
   );
 }

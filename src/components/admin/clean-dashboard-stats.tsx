@@ -188,8 +188,16 @@ async function getUserInfo(userId: string) {
 }
 
 export default async function CleanDashboardStats() {
-  const stats = await getStats();
+  // 服务端认证检查
   const session = await getServerSession(authOptions);
+
+  if (!session?.user || session.user.role !== "ADMIN") {
+    // 未登录或权限不足时重定向到登录页
+    // 注意：这里返回空组件，实际重定向由中间件处理
+    return null;
+  }
+
+  const stats = await getStats();
   const { daysSinceStart, daysUntilTarget } = calculateDays();
   const greeting = getGreeting();
 
@@ -209,37 +217,39 @@ export default async function CleanDashboardStats() {
   return (
     <div className="space-y-6">
       {/* 欢迎信息卡片 */}
-      <div className="bg-gradient-to-br from-purple-600 via-pink-600 to-blue-600 rounded-2xl p-8 text-white shadow-xl">
+      <div className="bg-black dark:bg-white rounded-2xl p-8 text-white dark:text-black shadow-xl">
         <div className="flex items-start justify-between">
           <div className="flex-1">
             <h2 className="text-3xl font-bold mb-2">
               {greeting}，{displayName} 👋
             </h2>
-            <p className="text-purple-100 text-lg mb-6">欢迎回到你的创作空间</p>
+            <p className="text-gray-300 dark:text-gray-600 text-lg mb-6">
+              欢迎回到你的创作空间
+            </p>
 
             <div className="grid grid-cols-2 gap-6 max-w-md">
-              <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4">
+              <div className="bg-white/10 dark:bg-black/10 backdrop-blur-sm rounded-xl p-4">
                 <div className="flex items-center space-x-2 mb-2">
                   <Activity className="h-5 w-5" />
                   <span className="text-sm font-medium">已坚持</span>
                 </div>
                 <div className="text-3xl font-bold">{daysSinceStart}</div>
-                <div className="text-xs text-purple-100 mt-1">天</div>
+                <div className="text-xs opacity-70 mt-1">天</div>
               </div>
 
-              <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4">
+              <div className="bg-white/10 dark:bg-black/10 backdrop-blur-sm rounded-xl p-4">
                 <div className="flex items-center space-x-2 mb-2">
                   <Clock className="h-5 w-5" />
                   <span className="text-sm font-medium">距离目标</span>
                 </div>
                 <div className="text-3xl font-bold">{daysUntilTarget}</div>
-                <div className="text-xs text-purple-100 mt-1">天</div>
+                <div className="text-xs opacity-70 mt-1">天</div>
               </div>
             </div>
           </div>
 
           <div className="hidden lg:block">
-            <div className="w-32 h-32 bg-white/10 backdrop-blur-sm rounded-2xl flex items-center justify-center">
+            <div className="w-32 h-32 bg-white/10 dark:bg-black/10 backdrop-blur-sm rounded-2xl flex items-center justify-center">
               <BarChart3 className="h-16 w-16" />
             </div>
           </div>
@@ -252,32 +262,32 @@ export default async function CleanDashboardStats() {
           title="全部文章"
           value={stats.totalPosts}
           description={`${stats.publishedPosts} 已发布 · ${stats.draftPosts} 草稿`}
-          icon={<FileText className="h-6 w-6 text-white" />}
-          gradient="bg-gradient-to-br from-blue-500 to-blue-600"
+          icon={<FileText className="h-6 w-6 text-white dark:text-black" />}
+          gradient="bg-black dark:bg-white"
         />
 
         <StatCard
           title="总浏览量"
           value={stats.totalViews}
           description="所有文章的浏览次数"
-          icon={<Eye className="h-6 w-6 text-white" />}
-          gradient="bg-gradient-to-br from-green-500 to-emerald-600"
+          icon={<Eye className="h-6 w-6 text-white dark:text-black" />}
+          gradient="bg-black dark:bg-white"
         />
 
         <StatCard
           title="分类"
           value={stats.totalCategories}
           description="内容分类数量"
-          icon={<FolderOpen className="h-6 w-6 text-white" />}
-          gradient="bg-gradient-to-br from-purple-500 to-purple-600"
+          icon={<FolderOpen className="h-6 w-6 text-white dark:text-black" />}
+          gradient="bg-black dark:bg-white"
         />
 
         <StatCard
           title="标签"
           value={stats.totalTags}
           description="文章标签数量"
-          icon={<Tags className="h-6 w-6 text-white" />}
-          gradient="bg-gradient-to-br from-orange-500 to-pink-600"
+          icon={<Tags className="h-6 w-6 text-white dark:text-black" />}
+          gradient="bg-black dark:bg-white"
         />
       </div>
 
@@ -289,7 +299,7 @@ export default async function CleanDashboardStats() {
             <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
               发布进度
             </h3>
-            <CheckCircle2 className="h-5 w-5 text-green-500" />
+            <CheckCircle2 className="h-5 w-5 text-gray-900 dark:text-gray-100" />
           </div>
 
           <div className="space-y-4">
@@ -310,7 +320,7 @@ export default async function CleanDashboardStats() {
 
             <div className="grid grid-cols-3 gap-4 pt-4 border-t border-gray-200 dark:border-gray-700">
               <div className="text-center">
-                <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                <div className="text-2xl font-bold text-black dark:text-white">
                   {stats.publishedPosts}
                 </div>
                 <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
@@ -318,7 +328,7 @@ export default async function CleanDashboardStats() {
                 </div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">
+                <div className="text-2xl font-bold text-gray-600 dark:text-gray-400">
                   {stats.draftPosts}
                 </div>
                 <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
@@ -326,7 +336,7 @@ export default async function CleanDashboardStats() {
                 </div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">
+                <div className="text-2xl font-bold text-gray-400 dark:text-gray-500">
                   {stats.featuredPosts}
                 </div>
                 <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
@@ -349,8 +359,8 @@ export default async function CleanDashboardStats() {
           <div className="space-y-3">
             <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
               <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
-                  <FileText className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                <div className="w-10 h-10 bg-gray-200 dark:bg-gray-600 rounded-lg flex items-center justify-center">
+                  <FileText className="h-5 w-5 text-black dark:text-white" />
                 </div>
                 <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
                   平均浏览量
@@ -365,8 +375,8 @@ export default async function CleanDashboardStats() {
 
             <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
               <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 bg-purple-100 dark:bg-purple-900/30 rounded-lg flex items-center justify-center">
-                  <FolderOpen className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                <div className="w-10 h-10 bg-gray-200 dark:bg-gray-600 rounded-lg flex items-center justify-center">
+                  <FolderOpen className="h-5 w-5 text-black dark:text-white" />
                 </div>
                 <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
                   每分类文章数
@@ -381,8 +391,8 @@ export default async function CleanDashboardStats() {
 
             <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
               <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 bg-orange-100 dark:bg-orange-900/30 rounded-lg flex items-center justify-center">
-                  <Tags className="h-5 w-5 text-orange-600 dark:text-orange-400" />
+                <div className="w-10 h-10 bg-gray-200 dark:bg-gray-600 rounded-lg flex items-center justify-center">
+                  <Tags className="h-5 w-5 text-black dark:text-white" />
                 </div>
                 <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
                   每文章标签数
@@ -451,12 +461,12 @@ export default async function CleanDashboardStats() {
                   <div
                     className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm ${
                       index === 0
-                        ? "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400"
+                        ? "bg-black dark:bg-white text-white dark:text-black"
                         : index === 1
-                          ? "bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400"
+                          ? "bg-gray-600 text-white"
                           : index === 2
-                            ? "bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400"
-                            : "bg-gray-50 dark:bg-gray-700/50 text-gray-500 dark:text-gray-400"
+                            ? "bg-gray-400 text-white"
+                            : "bg-gray-100 dark:bg-gray-700 text-gray-500"
                     }`}
                   >
                     {index + 1}
@@ -466,7 +476,7 @@ export default async function CleanDashboardStats() {
                       {post.title}
                     </div>
                   </div>
-                  <div className="flex items-center space-x-1 text-sm font-semibold text-blue-600 dark:text-blue-400">
+                  <div className="flex items-center space-x-1 text-sm font-semibold text-black dark:text-white">
                     <Eye className="h-4 w-4" />
                     <span>{post.views.toLocaleString()}</span>
                   </div>

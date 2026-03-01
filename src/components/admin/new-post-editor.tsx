@@ -15,6 +15,7 @@ export default function NewPostEditor({ mode, postId }: NewPostEditorProps) {
   const { toast } = useToast();
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
+  const [slug, setSlug] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [initialPublishData, setInitialPublishData] = useState<
     Partial<PublishData> | undefined
@@ -32,6 +33,7 @@ export default function NewPostEditor({ mode, postId }: NewPostEditorProps) {
       const post = await response.json();
       setTitle(post.title);
       setContent(post.content);
+      setSlug(post.slug);
 
       // 保存发布相关的数据
       setInitialPublishData({
@@ -214,6 +216,8 @@ export default function NewPostEditor({ mode, postId }: NewPostEditorProps) {
       isLoading={isLoading}
       mode={mode}
       initialPublishData={initialPublishData}
+      postId={postId}
+      postSlug={slug}
     />
   );
 }

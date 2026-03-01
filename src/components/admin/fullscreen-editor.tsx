@@ -1,12 +1,14 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { X, Send, Save } from "lucide-react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { X, Send, Save, ImageIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import PublishDialog from "./publish-dialog";
 import AIAssistant, { AIRecommendation } from "./ai-assistant";
 import NovelEditorWrapper from "./novel-editor-wrapper";
+import ImagePicker from "./image-picker";
+import { jsonToMarkdown } from "@/lib/editor/markdown-converter";
 
 interface FullscreenEditorProps {
   title: string;
@@ -19,6 +21,8 @@ interface FullscreenEditorProps {
   isLoading?: boolean;
   mode?: "create" | "edit";
   initialPublishData?: Partial<PublishData>;
+  postId?: string;
+  postSlug?: string;
 }
 
 export interface PublishData {
@@ -41,10 +45,14 @@ export default function FullscreenEditor({
   isLoading = false,
   mode = "create",
   initialPublishData,
+  postId,
+  postSlug,
 }: FullscreenEditorProps) {
   const [showPublishDialog, setShowPublishDialog] = useState(false);
+  const [showImagePicker, setShowImagePicker] = useState(false);
   const [wordCount, setWordCount] = useState(0);
   const [charCount, setCharCount] = useState(0);
+  const editorRef = useRef<any>(null); // 编辑器实例引用
 
   // AI 生成的数据（传递给发布对话框）
   const [aiExcerpt, setAiExcerpt] = useState<string | undefined>();
@@ -93,6 +101,55 @@ export default function FullscreenEditor({
       setShowPublishDialog(false);
     },
     [onPublish]
+  );
+
+  const handleInsertImage = useCallback(
+    (markdown: string) => {
+      const editor = editorRef.current;
+      if (!editor) {
+        console.error("编辑器未初始化");
+        return;
+      }
+
+      // 提取图片 URL 和 alt 文本
+      const srcMatch = markdown.match(/\((.*?)\)/);
+      const altMatch = markdown.match(/\[(.*?)\]/);
+
+      if (!srcMatch || !srcMatch[1]) {
+        console.error("无效的 Markdown 格式");
+        return;
+      }
+
+      // 插入图片到文档末尾（作为独立的块级节点）
+      editor
+        .chain()
+        .focus("end")
+        .insertContent([
+          { type: "paragraph" },
+          { type: "paragraph" },
+          {
+            type: "image",
+            attrs: {
+              src: srcMatch[1],
+              alt: altMatch?.[1] || "",
+            },
+          },
+          { type: "paragraph" },
+        ])
+        .run();
+
+      // 手动触发内容同步（因为 insertContent 可能不会触发 onUpdate）
+      setTimeout(() => {
+        if (editor) {
+          const json = editor.getJSON();
+          const markdown = jsonToMarkdown(json);
+          onContentChange(markdown);
+        }
+      }, 200);
+
+      setShowImagePicker(false);
+    },
+    [onContentChange]
   );
 
   return (
@@ -150,6 +207,18 @@ export default function FullscreenEditor({
           <Button
             variant="outline"
             size="sm"
+            onClick={() => setShowImagePicker(true)}
+            disabled={!postId}
+            className="h-8"
+            title={postId ? "插入图片" : "请先保存文章"}
+          >
+            <ImageIcon className="h-4 w-4 mr-2" />
+            插入图片
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
             onClick={onSave}
             disabled={isLoading}
             className="h-8"
@@ -191,7 +260,12 @@ export default function FullscreenEditor({
           <NovelEditorWrapper
             value={content}
             onChange={(val) => onContentChange(val || "")}
-            placeholder="开始写作吧...\n\n支持 Markdown 语法：\n- **粗体**\n- *斜体*\n- `代码`\n- # 标题\n- - 列表\n- [链接](url)\n- ![图片](url)"
+            placeholder="开始写作吧..."
+            postId={postId}
+            postSlug={postSlug}
+            onEditorReady={(editor) => {
+              editorRef.current = editor;
+            }}
           />
         </div>
       </div>
@@ -209,6 +283,14 @@ export default function FullscreenEditor({
         aiSuggestedTags={aiTags}
         aiSuggestedCategories={aiCategories}
         articleContent={content}
+      />
+
+      {/* 图片选择器 */}
+      <ImagePicker
+        open={showImagePicker}
+        onClose={() => setShowImagePicker(false)}
+        postId={postId}
+        onInsertImage={handleInsertImage}
       />
     </div>
   );

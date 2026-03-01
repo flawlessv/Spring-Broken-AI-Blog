@@ -18,7 +18,7 @@ const updateProfileSchema = z.object({
   password: z.string().optional(),
   displayName: z.string().optional(),
   bio: z.string().max(500).optional(),
-  avatar: z.string().url().optional().or(z.literal("")),
+  avatar: z.string().optional(), // 支持相对路径和绝对路径
 
   // 联系信息
   email: z.string().email().optional().or(z.literal("")),

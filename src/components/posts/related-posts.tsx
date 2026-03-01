@@ -57,34 +57,44 @@ export default function RelatedPosts({ slug, limit = 3 }: RelatedPostsProps) {
   }
 
   return (
-    <div className="mt-8 pt-4 border-t border-gray-200 dark:border-gray-800">
+    <div className="mt-16 pt-8 border-t-2 border-black dark:border-white">
       {/* 标题 */}
-      <div className="flex items-center gap-2 mb-3">
-        <Sparkles className="h-4 w-4 text-amber-500" />
-        <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">
-          相关文章
-        </h2>
+      <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-black dark:bg-white flex items-center justify-center">
+            <Sparkles className="h-5 w-5 text-white dark:text-black" />
+          </div>
+          <h2 className="text-2xl font-black text-black dark:text-white uppercase tracking-tighter">
+            Related Stories
+          </h2>
+        </div>
         {mode === "vector" && (
-          <span className="text-xs px-1.5 py-0.5 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 rounded">
-            AI
+          <span className="text-[10px] px-3 py-1 bg-black dark:bg-white text-white dark:text-black font-bold uppercase tracking-widest rounded-full">
+            AI Powered
           </span>
         )}
       </div>
 
-      {/* 文章列表 */}
-      <ul className="space-y-1.5">
+      {/* 文章列表 - 卡片网格化或更简洁的列表 */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {posts.map((post) => (
-          <li key={post.id}>
-            <Link
-              href={`/posts/${post.slug}`}
-              className="group flex items-center gap-2 py-1.5 text-sm text-gray-700 dark:text-gray-300 hover:text-amber-600 dark:hover:text-amber-400 transition-colors"
-            >
-              <ChevronRight className="h-3.5 w-3.5 text-gray-400 group-hover:text-amber-500 flex-shrink-0 transition-colors" />
-              <span className="line-clamp-1">{post.title}</span>
-            </Link>
-          </li>
+          <Link
+            key={post.id}
+            href={`/posts/${post.slug}`}
+            className="group block p-6 border-2 border-black dark:border-white hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black transition-all duration-300"
+          >
+            <div className="flex flex-col h-full justify-between">
+              <h3 className="text-lg font-bold leading-tight line-clamp-2 mb-4 group-hover:underline decoration-2 underline-offset-4">
+                {post.title}
+              </h3>
+              <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest opacity-60 group-hover:opacity-100">
+                <span>Read More</span>
+                <ChevronRight className="h-3 w-3 transform group-hover:translate-x-1 transition-transform" />
+              </div>
+            </div>
+          </Link>
         ))}
-      </ul>
+      </div>
     </div>
   );
 }

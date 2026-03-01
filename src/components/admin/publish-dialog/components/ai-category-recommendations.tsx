@@ -28,8 +28,8 @@ export function AICategoryRecommendations({
 
   if (hasRecommendations) {
     return (
-      <div className="p-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg space-y-2">
-        <div className="flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 font-medium">
+      <div className="p-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg space-y-2">
+        <div className="flex items-center gap-1 text-xs text-gray-900 dark:text-gray-100 font-medium">
           <span>✨ AI 推荐分类</span>
         </div>
         <div className="flex flex-wrap gap-1.5">
@@ -44,7 +44,7 @@ export function AICategoryRecommendations({
                 key={`existing-${index}`}
                 type="button"
                 onClick={() => onSelect(existingCat.id)}
-                className="px-2 py-0.5 text-xs rounded transition-colors flex items-center gap-1 bg-blue-100 text-blue-700 hover:bg-blue-200 dark:bg-blue-800 dark:text-blue-200"
+                className="px-2 py-0.5 text-xs rounded transition-colors flex items-center gap-1 bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200"
               >
                 📁 {catName}
               </button>
@@ -57,7 +57,7 @@ export function AICategoryRecommendations({
               type="button"
               disabled={isCreating}
               onClick={() => onCreate(catName)}
-              className="px-2 py-0.5 text-xs rounded transition-colors flex items-center gap-1 bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-800 dark:text-green-200 disabled:opacity-50"
+              className="px-2 py-0.5 text-xs rounded transition-colors flex items-center gap-1 bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-600 disabled:opacity-50"
             >
               ➕ {catName}
               <span className="opacity-70">(新建)</span>
@@ -74,7 +74,7 @@ export function AICategoryRecommendations({
         type="button"
         onClick={onGenerate}
         disabled={isGenerating}
-        className="w-full p-2 text-xs border border-dashed border-blue-300 dark:border-blue-700 rounded-lg text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors flex items-center justify-center gap-1 disabled:opacity-50"
+        className="w-full p-2 text-xs border border-dashed border-gray-300 dark:border-gray-700 rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors flex items-center justify-center gap-1 disabled:opacity-50"
       >
         {isGenerating ? (
           <>

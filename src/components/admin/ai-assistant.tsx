@@ -285,7 +285,7 @@ export default function AIAssistant({
         {/* 已存在的推荐 */}
         {hasExisting && (
           <div className="space-y-2">
-            <div className="flex items-center gap-2 text-sm font-medium text-blue-600 dark:text-blue-400">
+            <div className="flex items-center gap-2 text-sm font-medium text-gray-900 dark:text-gray-100">
               <span>{isCategory ? "📁" : "🏷️"}</span>
               <span>从现有{isCategory ? "分类" : "标签"}中推荐</span>
             </div>
@@ -293,7 +293,7 @@ export default function AIAssistant({
               {recommendation.existing.map((item, index) => (
                 <span
                   key={`existing-${index}`}
-                  className="px-3 py-1.5 rounded-full text-sm bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 border border-blue-200 dark:border-blue-700"
+                  className="px-3 py-1.5 rounded-full text-sm bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300 border border-gray-200 dark:border-gray-700"
                 >
                   {item}
                 </span>
@@ -305,7 +305,7 @@ export default function AIAssistant({
         {/* 新建议 */}
         {hasNew && (
           <div className="space-y-2">
-            <div className="flex items-center gap-2 text-sm font-medium text-green-600 dark:text-green-400">
+            <div className="flex items-center gap-2 text-sm font-medium text-gray-900 dark:text-gray-100">
               <span>➕</span>
               <span>建议新建</span>
             </div>
@@ -313,7 +313,7 @@ export default function AIAssistant({
               {recommendation.new.map((item, index) => (
                 <span
                   key={`new-${index}`}
-                  className="px-3 py-1.5 rounded-full text-sm bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300 border border-green-200 dark:border-green-700"
+                  className="px-3 py-1.5 rounded-full text-sm bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300 border border-gray-200 dark:border-gray-700"
                 >
                   {item}
                 </span>
@@ -427,7 +427,7 @@ export default function AIAssistant({
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Pencil className="h-5 w-5 text-primary" />
+              <Pencil className="h-5 w-5 text-gray-900 dark:text-gray-100" />
               全文润色
             </DialogTitle>
             <DialogDescription>
@@ -479,7 +479,7 @@ export default function AIAssistant({
         <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-primary" />
+              <Sparkles className="h-5 w-5 text-gray-900 dark:text-gray-100" />
               {generationResult && getTypeLabel(generationResult.type)}
             </DialogTitle>
             <DialogDescription>
